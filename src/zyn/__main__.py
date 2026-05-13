@@ -4,7 +4,14 @@ from typing import Annotated
 
 import typer
 
-from zyn.editors import Editor, Neovim, Target
+from zyn.editors import (
+    DEFAULT_SCOPE,
+    Editor,
+    Neovim,
+    Target,
+    build_scope,
+    parse_scope,
+)
 
 app = typer.Typer()
 
@@ -47,9 +54,22 @@ def main(
         Path | None,
         typer.Option("-w", "--workspace", help="Use ROOT as session root, no walk-up"),
     ] = None,
+    scope: Annotated[
+        str,
+        typer.Option(
+            "--scope",
+            envvar="ZYN_SCOPE",
+            help="Scope dimensions: comma-list of mux,wm — or 'all'/'none'",
+        ),
+    ] = DEFAULT_SCOPE,
 ) -> None:
     if start and detached:
         raise typer.BadParameter("--start and --detached are mutually exclusive")
+
+    try:
+        session_scope = build_scope(parse_scope(scope))
+    except ValueError as e:
+        raise typer.BadParameter(str(e), param_hint="--scope") from e
 
     editor_cls = EDITORS[editor]
 
@@ -59,16 +79,16 @@ def main(
 
     if start:
         root = workspace or (target.path if target.path.is_dir() else target.path.parent)
-        if Editor.has_live_session(root):
+        if Editor.has_live_session(root, session_scope):
             raise typer.BadParameter(f"session already exists at {root}")
-        with editor_cls.create_session(root) as e:
+        with editor_cls.create_session(root, session_scope) as e:
             e.launch(target)
         return
 
     instance = (
-        editor_cls.attach(workspace)
+        editor_cls.attach(workspace, session_scope)
         if workspace
-        else editor_cls.discover(target.path)
+        else editor_cls.discover(target.path, session_scope)
     )
     if instance:
         instance.open(target)

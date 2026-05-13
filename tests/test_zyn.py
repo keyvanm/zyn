@@ -6,7 +6,28 @@ import pytest
 from typer.testing import CliRunner
 
 from zyn.__main__ import app
-from zyn.editors import Editor, Neovim, Target
+from zyn.editors import (
+    Editor,
+    Neovim,
+    SessionScope,
+    Target,
+    detect_multiplexer,
+    detect_wm_workspace,
+    parse_scope,
+)
+
+
+@pytest.fixture(autouse=True)
+def clean_scope_env(monkeypatch):
+    """Strip env vars that would leak host scope detection into tests."""
+    for var in (
+        "ZELLIJ_SESSION_NAME",
+        "TMUX",
+        "HYPRLAND_INSTANCE_SIGNATURE",
+        "SWAYSOCK",
+        "ZYN_SCOPE",
+    ):
+        monkeypatch.delenv(var, raising=False)
 
 
 @pytest.fixture
@@ -446,3 +467,167 @@ def test_cli_start_with_line_creates_session_and_jumps(sockets_dir, tmp_path):
     mock_run.assert_called_once_with(
         ["nvim", "--listen", str(sock_path), "+42", str(f)]
     )
+
+
+# --- SessionScope key derivation ---
+
+
+def test_empty_scope_yields_no_components():
+    assert SessionScope().key_components() == []
+
+
+def test_scope_components_include_set_dimensions():
+    s = SessionScope(multiplexer="zellij:foo", wm_workspace="hyprland:1")
+    assert s.key_components() == ["mux:zellij:foo", "wm:hyprland:1"]
+
+
+def test_socket_path_differs_when_scope_differs(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    plain = Editor.get_socket_for(project)
+    scoped = Editor.get_socket_for(project, SessionScope(multiplexer="zellij:foo"))
+    assert plain != scoped
+
+
+def test_socket_path_differs_per_wm_workspace(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    ws1 = Editor.get_socket_for(project, SessionScope(wm_workspace="hyprland:1"))
+    ws2 = Editor.get_socket_for(project, SessionScope(wm_workspace="hyprland:2"))
+    assert ws1 != ws2
+
+
+# --- parse_scope ---
+
+
+def test_parse_scope_default():
+    assert parse_scope("mux") == ("mux",)
+
+
+def test_parse_scope_all():
+    assert parse_scope("all") == ("mux", "wm")
+
+
+def test_parse_scope_none_and_empty():
+    assert parse_scope("none") == ()
+    assert parse_scope("") == ()
+
+
+def test_parse_scope_comma_list():
+    assert parse_scope("mux,wm") == ("mux", "wm")
+
+
+def test_parse_scope_strips_whitespace():
+    assert parse_scope(" mux , wm ") == ("mux", "wm")
+
+
+def test_parse_scope_rejects_unknown():
+    with pytest.raises(ValueError, match="unknown scope dimension"):
+        parse_scope("mux,bogus")
+
+
+# --- detection ---
+
+
+def test_detect_multiplexer_zellij(monkeypatch):
+    monkeypatch.setenv("ZELLIJ_SESSION_NAME", "myproj")
+    assert detect_multiplexer() == "zellij:myproj"
+
+
+def test_detect_multiplexer_tmux(monkeypatch):
+    monkeypatch.setenv("TMUX", "/tmp/tmux-1000/default,1234,0")
+    fake_run = patch(
+        "zyn.editors.subprocess.run",
+        return_value=type("R", (), {"stdout": "work\n"})(),
+    )
+    with fake_run:
+        assert detect_multiplexer() == "tmux:work"
+
+
+def test_detect_multiplexer_none_when_no_env():
+    assert detect_multiplexer() is None
+
+
+def test_detect_wm_workspace_hyprland(monkeypatch):
+    monkeypatch.setenv("HYPRLAND_INSTANCE_SIGNATURE", "abc123")
+    fake_run = patch(
+        "zyn.editors.subprocess.run",
+        return_value=type("R", (), {"stdout": '{"id": 3, "name": "web"}'})(),
+    )
+    with fake_run:
+        assert detect_wm_workspace() == "hyprland:3"
+
+
+def test_detect_wm_workspace_none_when_no_env():
+    assert detect_wm_workspace() is None
+
+
+# --- CLI: scope-driven session isolation ---
+
+
+def test_cli_session_in_zellij_isolated_from_plain(sockets_dir, tmp_path, monkeypatch):
+    """Same root + different scope = different socket = different session."""
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+
+    # Live socket exists for the plain (no-scope) key
+    plain_sock = Editor.get_socket_for(project)
+    s = make_live_socket(plain_sock)
+    try:
+        # Invoke from inside zellij — scope=mux is default, so the plain
+        # socket shouldn't match. Falls through to detached.
+        monkeypatch.setenv("ZELLIJ_SESSION_NAME", "myproj")
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, [str(f)])
+        assert result.exit_code == 0
+        mock_run.assert_called_once_with(["nvim", str(f)])
+    finally:
+        s.close()
+
+
+def test_cli_scope_none_ignores_zellij_env(sockets_dir, tmp_path, monkeypatch):
+    """--scope none should attach to the plain socket even from inside zellij."""
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    plain_sock = Editor.get_socket_for(project)
+    s = make_live_socket(plain_sock)
+    try:
+        monkeypatch.setenv("ZELLIJ_SESSION_NAME", "myproj")
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, ["--scope", "none", str(f)])
+        assert result.exit_code == 0
+        mock_run.assert_called_once_with(
+            ["nvim", "--server", str(plain_sock), "--remote", str(f)]
+        )
+    finally:
+        s.close()
+
+
+def test_cli_start_creates_session_at_scoped_key(sockets_dir, tmp_path, monkeypatch):
+    """--start in a zellij session uses the scoped socket path, not the plain one."""
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    monkeypatch.setenv("ZELLIJ_SESSION_NAME", "myproj")
+    scoped_sock = Editor.get_socket_for(
+        project, SessionScope(multiplexer="zellij:myproj")
+    )
+    with patch("zyn.editors.subprocess.run") as mock_run:
+        result = runner.invoke(app, ["-s", str(f)])
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with(
+        ["nvim", "--listen", str(scoped_sock), str(f)]
+    )
+
+
+def test_cli_invalid_scope_errors(sockets_dir, tmp_path):
+    f = tmp_path / "file.txt"
+    f.touch()
+    result = runner.invoke(app, ["--scope", "bogus", str(f)])
+    assert result.exit_code != 0
+    assert "unknown scope dimension" in result.output

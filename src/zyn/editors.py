@@ -1,6 +1,7 @@
 import contextlib
 import hashlib
 import itertools
+import json
 import os
 import socket as _socket
 import subprocess
@@ -9,6 +10,119 @@ from pathlib import Path
 from typing import Self
 
 SOCKETS_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "zyn"
+
+
+@dataclass(frozen=True)
+class SessionScope:
+    """Discriminators that scope a session beyond just the workspace root.
+
+    Empty scope (all None) collapses to plain `hash(root)` keying — the
+    no-multiplexer, no-WM-detection baseline.
+    """
+
+    multiplexer: str | None = None
+    wm_workspace: str | None = None
+
+    def key_components(self) -> list[str]:
+        parts = []
+        if self.multiplexer:
+            parts.append(f"mux:{self.multiplexer}")
+        if self.wm_workspace:
+            parts.append(f"wm:{self.wm_workspace}")
+        return parts
+
+
+def detect_multiplexer() -> str | None:
+    if name := os.environ.get("ZELLIJ_SESSION_NAME"):
+        return f"zellij:{name}"
+    if os.environ.get("TMUX"):
+        try:
+            r = subprocess.run(
+                ["tmux", "display-message", "-p", "#S"],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=1,
+            )
+            return f"tmux:{r.stdout.strip()}"
+        except (
+            subprocess.CalledProcessError,
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+        ):
+            return None
+    return None
+
+
+def detect_wm_workspace() -> str | None:
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        try:
+            r = subprocess.run(
+                ["hyprctl", "activeworkspace", "-j"],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=1,
+            )
+            ws = json.loads(r.stdout)
+            return f"hyprland:{ws['id']}"
+        except (
+            subprocess.CalledProcessError,
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+            json.JSONDecodeError,
+            KeyError,
+        ):
+            return None
+    if os.environ.get("SWAYSOCK"):
+        try:
+            r = subprocess.run(
+                ["swaymsg", "-t", "get_workspaces"],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=1,
+            )
+            for ws in json.loads(r.stdout):
+                if ws.get("focused"):
+                    return f"sway:{ws['name']}"
+        except (
+            subprocess.CalledProcessError,
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+            json.JSONDecodeError,
+        ):
+            return None
+    return None
+
+
+AVAILABLE_SCOPES: tuple[str, ...] = ("mux", "wm")
+DEFAULT_SCOPE: str = "mux"
+
+
+def parse_scope(raw: str) -> tuple[str, ...]:
+    """Parse `--scope` value: 'all', 'none', or comma-list like 'mux,wm'."""
+    raw = raw.strip()
+    if raw in ("", "none"):
+        return ()
+    if raw == "all":
+        return AVAILABLE_SCOPES
+    parts = tuple(p.strip() for p in raw.split(",") if p.strip())
+    invalid = [p for p in parts if p not in AVAILABLE_SCOPES]
+    if invalid:
+        raise ValueError(
+            f"unknown scope dimension(s): {', '.join(invalid)}. "
+            f"Available: {', '.join(AVAILABLE_SCOPES)}, all, none"
+        )
+    return parts
+
+
+def build_scope(enabled: tuple[str, ...]) -> SessionScope:
+    """Detect requested scope dimensions; others left None."""
+    return SessionScope(
+        multiplexer=detect_multiplexer() if "mux" in enabled else None,
+        wm_workspace=detect_wm_workspace() if "wm" in enabled else None,
+    )
 
 
 @dataclass(frozen=True)
@@ -57,15 +171,16 @@ class Editor:
     _owns_socket: bool = field(default=False, init=False, repr=False)
 
     @staticmethod
-    def get_socket_for(path: Path) -> Path:
+    def get_socket_for(path: Path, scope: SessionScope = SessionScope()) -> Path:
         SOCKETS_DIR.mkdir(parents=True, exist_ok=True)
-        key = hashlib.md5(str(path.resolve()).encode()).hexdigest()
+        components = [str(path.resolve()), *scope.key_components()]
+        key = hashlib.md5("|".join(components).encode()).hexdigest()
         return SOCKETS_DIR / f"{key}.sock"
 
     @classmethod
-    def has_live_session(cls, root: Path) -> bool:
-        """True iff a live session exists at root. Unlinks stale socket files."""
-        sock = cls.get_socket_for(root)
+    def has_live_session(cls, root: Path, scope: SessionScope = SessionScope()) -> bool:
+        """True iff a live session exists at root within scope. Unlinks stale socket files."""
+        sock = cls.get_socket_for(root, scope)
         if _is_live_socket(sock):
             return True
         if sock.is_socket():
@@ -74,28 +189,32 @@ class Editor:
         return False
 
     @classmethod
-    def attach(cls, root: Path) -> Self | None:
-        """Attach to an existing session at exactly `root`."""
-        if not cls.has_live_session(root):
+    def attach(cls, root: Path, scope: SessionScope = SessionScope()) -> Self | None:
+        """Attach to an existing session at exactly `root` within `scope`."""
+        if not cls.has_live_session(root, scope):
             return None
-        return cls(root=root, session_socket=cls.get_socket_for(root))
+        return cls(root=root, session_socket=cls.get_socket_for(root, scope))
 
     @classmethod
-    def discover(cls, path: Path) -> Self | None:
-        """Walk up from `path` looking for a live session and attach to it."""
+    def discover(
+        cls, path: Path, scope: SessionScope = SessionScope()
+    ) -> Self | None:
+        """Walk up from `path` looking for a live session within `scope`."""
         dir_path = path if path.is_dir() else path.parent
         for directory in itertools.chain([dir_path], dir_path.parents):
-            if cls.has_live_session(directory):
+            if cls.has_live_session(directory, scope):
                 return cls(
                     root=directory.resolve(),
-                    session_socket=cls.get_socket_for(directory),
+                    session_socket=cls.get_socket_for(directory, scope),
                 )
         return None
 
     @classmethod
-    def create_session(cls, root: Path) -> Self:
-        """Configure a new session at `root`. Use as a context manager for cleanup."""
-        instance = cls(root=root, session_socket=cls.get_socket_for(root))
+    def create_session(
+        cls, root: Path, scope: SessionScope = SessionScope()
+    ) -> Self:
+        """Configure a new session at `root` within `scope`. Use as a context manager."""
+        instance = cls(root=root, session_socket=cls.get_socket_for(root, scope))
         instance._owns_socket = True
         return instance
 
