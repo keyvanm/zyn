@@ -52,23 +52,21 @@ def main(
 
     if start:
         root = workspace or (path if path.is_dir() else path.parent)
-        if Editor.get_socket_for(root).is_socket():
+        if Editor.has_live_session(root):
             raise typer.BadParameter(f"session already exists at {root}")
         with editor_cls(root=root) as e:
             e.convert_to_session()
-            e.launch()
+            e.launch(path)
         return
 
     if workspace:
-        sock = Editor.get_socket_for(workspace)
         instance = (
-            editor_cls(root=workspace, session_socket=sock)
-            if sock.is_socket()
+            editor_cls(root=workspace, session_socket=Editor.get_socket_for(workspace))
+            if Editor.has_live_session(workspace)
             else None
         )
     else:
-        candidate = editor_cls.discover(path)
-        instance = candidate if candidate and candidate.session_socket else None
+        instance = editor_cls.discover(path)
 
     if instance:
         instance.open(path)
