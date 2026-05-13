@@ -12,7 +12,6 @@ SOCKETS_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "zyn"
 
 
 def _is_live_socket(path: Path) -> bool:
-    """True if `path` is a socket file with a live listener accepting connections."""
     if not path.is_socket():
         return False
     try:
@@ -29,12 +28,8 @@ class Editor:
     """An interface to a Zyn compatible editor"""
 
     root: Path | None = field(default=None)
-    """The workspace root, a dir, could be empty to indicate not being tied to a workspace"""
     session_socket: Path | None = field(default=None)
-    """If this instance is associated with a session, here's the socket"""
     _owns_socket: bool = field(default=False, init=False, repr=False)
-    """True only when this instance created the socket; gates cleanup so attached
-    editors never delete a socket they don't own."""
 
     @staticmethod
     def get_socket_for(path: Path) -> Path:
@@ -44,7 +39,7 @@ class Editor:
 
     @classmethod
     def has_live_session(cls, root: Path) -> bool:
-        """True iff a live session exists at root. Cleans up stale socket files as a side effect."""
+        """True iff a live session exists at root. Unlinks stale socket files."""
         sock = cls.get_socket_for(root)
         if _is_live_socket(sock):
             return True
@@ -54,25 +49,30 @@ class Editor:
         return False
 
     @classmethod
-    def _discover_active_workspace_session(cls, path: Path) -> tuple[Path, Path | None]:
-        dir_path = path if path.is_dir() else path.parent
-        for directory in itertools.chain([dir_path], dir_path.parents):
-            if cls.has_live_session(directory):
-                return directory, cls.get_socket_for(directory)
-        return dir_path, None
+    def attach(cls, root: Path) -> Self | None:
+        """Attach to an existing session at exactly `root`."""
+        if not cls.has_live_session(root):
+            return None
+        return cls(root=root, session_socket=cls.get_socket_for(root))
 
     @classmethod
     def discover(cls, path: Path) -> Self | None:
-        directory, sock = cls._discover_active_workspace_session(path)
-        if sock is None:
-            return None
-        return cls(root=directory.resolve(), session_socket=sock)
+        """Walk up from `path` looking for a live session and attach to it."""
+        dir_path = path if path.is_dir() else path.parent
+        for directory in itertools.chain([dir_path], dir_path.parents):
+            if cls.has_live_session(directory):
+                return cls(
+                    root=directory.resolve(),
+                    session_socket=cls.get_socket_for(directory),
+                )
+        return None
 
-    def convert_to_session(self):
-        if not self.root:
-            raise ValueError("Needs to be rooted")
-        self.session_socket = self.get_socket_for(self.root)
-        self._owns_socket = True
+    @classmethod
+    def create_session(cls, root: Path) -> Self:
+        """Configure a new session at `root`. Use as a context manager for cleanup."""
+        instance = cls(root=root, session_socket=cls.get_socket_for(root))
+        instance._owns_socket = True
+        return instance
 
     def __enter__(self) -> Self:
         return self
@@ -82,28 +82,34 @@ class Editor:
             self.session_socket.unlink(missing_ok=True)
 
     def launch(self, path: Path | None = None):
-        """Start a new editor session listening on session_socket; optionally open path."""
+        """Start a new editor process listening on session_socket; optionally open path."""
         raise NotImplementedError
 
     def open(self, path: Path):
-        """Open path in the existing session at session_socket, or detached if none."""
+        """Route path to the existing session at session_socket."""
+        raise NotImplementedError
+
+    def detached(self, path: Path):
+        """Run the editor with no session machinery."""
         raise NotImplementedError
 
 
 class Neovim(Editor):
     def launch(self, path: Path | None = None):
-        args = ["nvim"]
-        if self.session_socket:
-            args.extend(("--listen", str(self.session_socket)))
+        if not self.session_socket:
+            raise ValueError("launch requires a session_socket")
+        args = ["nvim", "--listen", str(self.session_socket)]
         target = path or self.root
         if target:
             args.append(str(target))
         subprocess.run(args)
 
     def open(self, path: Path):
-        args = ["nvim"]
-        if self.session_socket:
-            args.extend(("--server", str(self.session_socket), "--remote", str(path)))
-        else:
-            args.append(str(path))
-        subprocess.run(args)
+        if not self.session_socket:
+            raise ValueError("open requires a session_socket; use detached() for raw editor")
+        subprocess.run(
+            ["nvim", "--server", str(self.session_socket), "--remote", str(path)]
+        )
+
+    def detached(self, path: Path):
+        subprocess.run(["nvim", str(path)])

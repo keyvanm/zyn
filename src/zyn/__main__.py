@@ -47,31 +47,22 @@ def main(
     editor_cls = EDITORS[editor]
 
     if detached:
-        editor_cls().open(path)
+        editor_cls().detached(path)
         return
 
     if start:
         root = workspace or (path if path.is_dir() else path.parent)
         if Editor.has_live_session(root):
             raise typer.BadParameter(f"session already exists at {root}")
-        with editor_cls(root=root) as e:
-            e.convert_to_session()
+        with editor_cls.create_session(root) as e:
             e.launch(path)
         return
 
-    if workspace:
-        instance = (
-            editor_cls(root=workspace, session_socket=Editor.get_socket_for(workspace))
-            if Editor.has_live_session(workspace)
-            else None
-        )
-    else:
-        instance = editor_cls.discover(path)
-
+    instance = editor_cls.attach(workspace) if workspace else editor_cls.discover(path)
     if instance:
         instance.open(path)
     else:
-        editor_cls().open(path)
+        editor_cls().detached(path)
 
 
 if __name__ == "__main__":
