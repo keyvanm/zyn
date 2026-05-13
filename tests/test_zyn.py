@@ -6,7 +6,7 @@ import pytest
 from typer.testing import CliRunner
 
 from zyn.__main__ import app
-from zyn.editors import Editor, Neovim
+from zyn.editors import Editor, Neovim, Target
 
 
 @pytest.fixture
@@ -356,3 +356,93 @@ def test_attached_editor_does_not_unlink_socket(sockets_dir, tmp_path):
         assert sock_path.exists()
     finally:
         s.close()
+
+
+# --- Target.parse ---
+
+
+def test_target_parse_path_only():
+    t = Target.parse("src/app.py")
+    assert t == Target(Path("src/app.py"))
+
+
+def test_target_parse_with_line():
+    t = Target.parse("src/app.py:42")
+    assert t == Target(Path("src/app.py"), 42)
+
+
+def test_target_parse_with_line_and_col():
+    t = Target.parse("src/app.py:42:5")
+    assert t == Target(Path("src/app.py"), 42, 5)
+
+
+def test_target_parse_filename_with_colons_no_digits():
+    t = Target.parse("weird:name.txt")
+    assert t == Target(Path("weird:name.txt"))
+
+
+def test_target_parse_absolute_path_with_line():
+    t = Target.parse("/tmp/foo/file.py:99")
+    assert t == Target(Path("/tmp/foo/file.py"), 99)
+
+
+# --- CLI: line/col routing ---
+
+
+def test_cli_detached_with_line_emits_plus_lineno(sockets_dir, tmp_path):
+    f = tmp_path / "file.txt"
+    f.touch()
+    with patch("zyn.editors.subprocess.run") as mock_run:
+        result = runner.invoke(app, [f"{f}:42"])
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with(["nvim", "+42", str(f)])
+
+
+def test_cli_detached_with_line_and_col_emits_cursor_call(sockets_dir, tmp_path):
+    f = tmp_path / "file.txt"
+    f.touch()
+    with patch("zyn.editors.subprocess.run") as mock_run:
+        result = runner.invoke(app, [f"{f}:42:5"])
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with(
+        ["nvim", "+call cursor(42,5)", str(f)]
+    )
+
+
+def test_cli_attach_with_line_passes_cursor_arg(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    sock_path = Editor.get_socket_for(project)
+    s = make_live_socket(sock_path)
+    try:
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, [f"{f}:42:5"])
+        assert result.exit_code == 0
+        mock_run.assert_called_once_with(
+            [
+                "nvim",
+                "--server",
+                str(sock_path),
+                "--remote",
+                "+call cursor(42,5)",
+                str(f),
+            ]
+        )
+    finally:
+        s.close()
+
+
+def test_cli_start_with_line_creates_session_and_jumps(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    sock_path = Editor.get_socket_for(project)
+    with patch("zyn.editors.subprocess.run") as mock_run:
+        result = runner.invoke(app, ["-s", f"{f}:42"])
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with(
+        ["nvim", "--listen", str(sock_path), "+42", str(f)]
+    )

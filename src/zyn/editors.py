@@ -11,6 +11,31 @@ from typing import Self
 SOCKETS_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "zyn"
 
 
+@dataclass(frozen=True)
+class Target:
+    """A file to open, optionally with a cursor position."""
+
+    path: Path
+    line: int | None = None
+    col: int | None = None
+
+    @classmethod
+    def parse(cls, raw: str) -> "Target":
+        """Parse `path`, `path:line`, or `path:line:col`.
+
+        Trailing `:digit` segments are treated as line/col. Anything else
+        (including filenames literally containing colons) is taken as the
+        full path — matches helix/sublime convention.
+        """
+        parts = raw.rsplit(":", 2)
+        if len(parts) == 3 and parts[1].isdigit() and parts[2].isdigit():
+            return cls(Path(parts[0]), int(parts[1]), int(parts[2]))
+        parts = raw.rsplit(":", 1)
+        if len(parts) == 2 and parts[1].isdigit():
+            return cls(Path(parts[0]), int(parts[1]))
+        return cls(Path(raw))
+
+
 def _is_live_socket(path: Path) -> bool:
     if not path.is_socket():
         return False
@@ -81,35 +106,55 @@ class Editor:
         if self.session_socket and self._owns_socket:
             self.session_socket.unlink(missing_ok=True)
 
-    def launch(self, path: Path | None = None):
-        """Start a new editor process listening on session_socket; optionally open path."""
+    def launch(self, target: Target | None = None):
+        """Start a new editor process listening on session_socket; optionally open target."""
         raise NotImplementedError
 
-    def open(self, path: Path):
-        """Route path to the existing session at session_socket."""
+    def open(self, target: Target):
+        """Route target to the existing session at session_socket."""
         raise NotImplementedError
 
-    def detached(self, path: Path):
+    def detached(self, target: Target):
         """Run the editor with no session machinery."""
         raise NotImplementedError
 
 
+def _vim_cursor_arg(target: Target) -> str | None:
+    if target.line and target.col:
+        return f"+call cursor({target.line},{target.col})"
+    if target.line:
+        return f"+{target.line}"
+    return None
+
+
 class Neovim(Editor):
-    def launch(self, path: Path | None = None):
+    def launch(self, target: Target | None = None):
         if not self.session_socket:
             raise ValueError("launch requires a session_socket")
         args = ["nvim", "--listen", str(self.session_socket)]
-        target = path or self.root
+        if target is None and self.root:
+            target = Target(self.root)
         if target:
-            args.append(str(target))
+            cursor = _vim_cursor_arg(target)
+            if cursor:
+                args.append(cursor)
+            args.append(str(target.path))
         subprocess.run(args)
 
-    def open(self, path: Path):
+    def open(self, target: Target):
         if not self.session_socket:
             raise ValueError("open requires a session_socket; use detached() for raw editor")
-        subprocess.run(
-            ["nvim", "--server", str(self.session_socket), "--remote", str(path)]
-        )
+        args = ["nvim", "--server", str(self.session_socket), "--remote"]
+        cursor = _vim_cursor_arg(target)
+        if cursor:
+            args.append(cursor)
+        args.append(str(target.path))
+        subprocess.run(args)
 
-    def detached(self, path: Path):
-        subprocess.run(["nvim", str(path)])
+    def detached(self, target: Target):
+        args = ["nvim"]
+        cursor = _vim_cursor_arg(target)
+        if cursor:
+            args.append(cursor)
+        args.append(str(target.path))
+        subprocess.run(args)
