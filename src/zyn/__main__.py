@@ -15,6 +15,7 @@ EDITORS: dict[str, type[Editor]] = {
 
 @app.command()
 def main(file: Annotated[Path, typer.Argument()]) -> None:
+    file = file.resolve()
     editor_name = os.environ.get("ZYN_EDITOR", "nvim")
     editor_cls = EDITORS.get(editor_name)
     if editor_cls is None:
