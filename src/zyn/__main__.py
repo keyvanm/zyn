@@ -89,14 +89,23 @@ def main(
         root = workspace or (target.path if target.path.is_dir() else target.path.parent)
         if Editor.has_live_session(root, session_scope):
             raise typer.BadParameter(f"session already exists at {root}")
-        with editor_cls.create_session(root, session_scope) as e:
-            e.launch(target)
+        lock = Editor.acquire_start_lock(root, session_scope)
+        if lock is None:
+            raise typer.BadParameter(
+                f"session creation in progress at {root}; "
+                f"drop --start to wait and attach"
+            )
+        try:
+            with editor_cls.create_session(root, session_scope) as e:
+                e.launch(target)
+        finally:
+            Editor.release_start_lock(lock)
         return
 
     instance = (
         editor_cls.attach(workspace, session_scope)
         if workspace
-        else editor_cls.discover(target.path, session_scope)
+        else editor_cls.discover(target.path, session_scope, wait_pending=True)
     )
     if instance:
         instance.open(target, focus=not no_focus)

@@ -5,9 +5,13 @@ import json
 import os
 import socket as _socket
 import subprocess
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Self
+
+STALE_LOCK_AGE_SECONDS = 60.0
+DEFAULT_WAIT_TIMEOUT = 10.0
 
 SOCKETS_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "zyn"
 
@@ -189,6 +193,67 @@ class Editor:
         return False
 
     @classmethod
+    def lock_path_for(cls, root: Path, scope: SessionScope = SessionScope()) -> Path:
+        return cls.get_socket_for(root, scope).with_suffix(".lock")
+
+    @classmethod
+    def is_session_pending(cls, root: Path, scope: SessionScope = SessionScope()) -> bool:
+        """True iff a `--start` is in flight for (root, scope) — a lock is held
+        with no live socket yet. Auto-removes stale locks (older than
+        STALE_LOCK_AGE_SECONDS with no live socket)."""
+        lock = cls.lock_path_for(root, scope)
+        if not lock.is_dir():
+            return False
+        if cls.has_live_session(root, scope):
+            return False  # lock is incidental; live socket already exists
+        try:
+            age = time.time() - lock.stat().st_mtime
+        except OSError:
+            return False
+        if age > STALE_LOCK_AGE_SECONDS:
+            with contextlib.suppress(OSError):
+                lock.rmdir()
+            return False
+        return True
+
+    @classmethod
+    def acquire_start_lock(
+        cls, root: Path, scope: SessionScope = SessionScope()
+    ) -> Path | None:
+        """Atomic mkdir-based lock. Returns the lock path on success, None if
+        another --start is already in flight at (root, scope)."""
+        lock = cls.lock_path_for(root, scope)
+        cls.is_session_pending(root, scope)  # may clean up a stale lock
+        try:
+            lock.mkdir(parents=True, exist_ok=False)
+            return lock
+        except FileExistsError:
+            return None
+
+    @staticmethod
+    def release_start_lock(lock: Path) -> None:
+        with contextlib.suppress(OSError):
+            lock.rmdir()
+
+    @classmethod
+    def wait_for_session(
+        cls,
+        root: Path,
+        scope: SessionScope = SessionScope(),
+        timeout: float = DEFAULT_WAIT_TIMEOUT,
+    ) -> bool:
+        """Poll for a live session at (root, scope). Bails early if the lock
+        disappears (holder gave up) or timeout expires."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if cls.has_live_session(root, scope):
+                return True
+            if not cls.is_session_pending(root, scope):
+                return False
+            time.sleep(0.1)
+        return False
+
+    @classmethod
     def attach(cls, root: Path, scope: SessionScope = SessionScope()) -> Self | None:
         """Attach to an existing session at exactly `root` within `scope`."""
         if not cls.has_live_session(root, scope):
@@ -197,9 +262,18 @@ class Editor:
 
     @classmethod
     def discover(
-        cls, path: Path, scope: SessionScope = SessionScope()
+        cls,
+        path: Path,
+        scope: SessionScope = SessionScope(),
+        *,
+        wait_pending: bool = False,
+        wait_timeout: float = DEFAULT_WAIT_TIMEOUT,
     ) -> Self | None:
-        """Walk up from `path` looking for a live session within `scope`."""
+        """Walk up from `path` looking for a live session within `scope`.
+
+        When `wait_pending=True`, also waits on a `--start` in flight at any
+        walk-up level, attaching once the session becomes live.
+        """
         dir_path = path if path.is_dir() else path.parent
         for directory in itertools.chain([dir_path], dir_path.parents):
             if cls.has_live_session(directory, scope):
@@ -207,6 +281,12 @@ class Editor:
                     root=directory.resolve(),
                     session_socket=cls.get_socket_for(directory, scope),
                 )
+            if wait_pending and cls.is_session_pending(directory, scope):
+                if cls.wait_for_session(directory, scope, wait_timeout):
+                    return cls(
+                        root=directory.resolve(),
+                        session_socket=cls.get_socket_for(directory, scope),
+                    )
         return None
 
     @classmethod
