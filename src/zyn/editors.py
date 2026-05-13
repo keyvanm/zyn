@@ -6,34 +6,35 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Self
 
+SOCKETS_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "zyn"
+
 
 @dataclass
 class Editor:
     root: Path
     socket: Path | None = field(default=None)
 
-    @staticmethod
-    def sockets_dir() -> Path:
-        runtime = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
-        return Path(runtime) / "zyn"
+    def __post_init__(self) -> None:
+        self.root = self.root.resolve()
 
-    def socket_path(self) -> Path:
+    @property
+    def default_socket_path(self) -> Path:
         key = hashlib.md5(str(self.root).encode()).hexdigest()
-        return self.sockets_dir() / f"{key}.sock"
+        return SOCKETS_DIR / f"{key}.sock"
 
     @classmethod
-    def find(cls, path: Path) -> Self | None:
+    def discover(cls, path: Path) -> Self | None:
         dir_path = path if path.is_dir() else path.parent
         for directory in itertools.chain([dir_path], dir_path.parents):
-            sock = cls(root=directory).socket_path()
+            sock = cls(root=directory).default_socket_path
             if sock.is_socket():
                 return cls(root=directory, socket=sock)
         return None
 
     def ensure_socket(self) -> Path:
-        self.sockets_dir().mkdir(parents=True, exist_ok=True)
+        SOCKETS_DIR.mkdir(parents=True, exist_ok=True)
         if self.socket is None:
-            self.socket = self.socket_path()
+            self.socket = self.default_socket_path
         return self.socket
 
     def __enter__(self) -> Self:
