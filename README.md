@@ -2,6 +2,8 @@
 
 One workspace, one editor.
 
-When you're deep in a project, files should open in your editor — not a new window, not somewhere unexpected. Click a file path in your Claude Code terminal, select a file in Yazi, follow any reference — it lands in your editor, at the right line.
+If you use terminal editors and want an IDE-like experience, Zyn keeps everything in sync. Click a file path in your Claude Code terminal, select a file in Yazi, follow any reference — it lands in your master editor for that workspace, at the right line, not in a new pane or window.
 
-No wiring per tool. Whatever editor you already have running is the one that gets used.
+Set `$EDITOR=zyn` and `$ZYN_EDITOR=nvim`. The first open in a directory starts your editor there; every open after reuses it. No wiring per tool, no configuration per workspace.
+
+Made primarily for terminal editors, with GUI editor support on the roadmap.
