@@ -305,12 +305,12 @@ class Editor:
         if self.session_socket and self._owns_socket:
             self.session_socket.unlink(missing_ok=True)
 
-    def launch(self, target: Target | None = None):
-        """Start a new editor process listening on session_socket; optionally open target."""
+    def launch(self, targets: list[Target] | None = None):
+        """Start a new editor process listening on session_socket; optionally open targets."""
         raise NotImplementedError
 
-    def open(self, target: Target, focus: bool = True):
-        """Route target to the existing session at session_socket.
+    def open(self, targets: list[Target], focus: bool = True):
+        """Route targets to the existing session at session_socket.
 
         `focus` triggers an editor-side hook (e.g. `Zyn.focus()` in nvim)
         that brings the editor's pane to the foreground if a multiplexer
@@ -318,7 +318,7 @@ class Editor:
         """
         raise NotImplementedError
 
-    def detached(self, target: Target):
+    def detached(self, targets: list[Target]):
         """Run the editor with no session machinery."""
         raise NotImplementedError
 
@@ -331,41 +331,60 @@ def _vim_cursor_arg(target: Target) -> str | None:
     return None
 
 
+def _vim_cursor_ex(target: Target) -> str | None:
+    """Cursor positioning as a bare ex command (no leading `+`), for chaining via `|`."""
+    if target.line and target.col:
+        return f"call cursor({target.line},{target.col})"
+    if target.line:
+        return str(target.line)
+    return None
+
+
+def _escape_vim_path(path: Path) -> str:
+    return str(path.resolve()).replace("\\", "\\\\").replace(" ", r"\ ")
+
+
+def _build_nvim_file_args(targets: list[Target]) -> list[str]:
+    """Build the file/tab/cursor portion of an nvim argv. Always uses `-p`
+    so each target gets a tab, and any cursor positioning lands on the
+    *last* target (which becomes the visible tab via `tablast`)."""
+    if not targets:
+        return []
+    args = ["-p", *[str(t.path) for t in targets]]
+    cursor_ex = _vim_cursor_ex(targets[-1])
+    if cursor_ex:
+        args.extend(["-c", f"tablast | {cursor_ex}"])
+    return args
+
+
 class Neovim(Editor):
-    def launch(self, target: Target | None = None):
+    def launch(self, targets: list[Target] | None = None):
         if not self.session_socket:
             raise ValueError("launch requires a session_socket")
         args = ["nvim", "--listen", str(self.session_socket)]
-        if target is None and self.root:
-            target = Target(self.root)
-        if target:
-            cursor = _vim_cursor_arg(target)
-            if cursor:
-                args.append(cursor)
-            args.append(str(target.path))
+        if not targets and self.root:
+            targets = [Target(self.root)]
+        args.extend(_build_nvim_file_args(targets or []))
         subprocess.run(args)
 
-    def open(self, target: Target, focus: bool = True):
+    def open(self, targets: list[Target], focus: bool = True):
         if not self.session_socket:
             raise ValueError("open requires a session_socket; use detached() for raw editor")
-        abs_path = target.path.resolve()
-        escaped = str(abs_path).replace("\\", "\\\\").replace(" ", r"\ ")
-        cmd = f"tab drop {escaped}"
-        if target.line and target.col:
-            cmd += f" | call cursor({target.line},{target.col})"
-        elif target.line:
-            cmd += f" | {target.line}"
+        if not targets:
+            raise ValueError("open requires at least one target")
+        parts = [f"tab drop {_escape_vim_path(t.path)}" for t in targets]
+        cursor_ex = _vim_cursor_ex(targets[-1])
+        if cursor_ex:
+            parts.append(cursor_ex)
         if focus:
-            cmd += " | lua if type(Zyn)=='table' then Zyn.focus() end"
-        payload = f"<Esc>:{cmd}<CR>"
+            parts.append("lua if type(Zyn)=='table' then Zyn.focus() end")
+        payload = f"<Esc>:{' | '.join(parts)}<CR>"
         subprocess.run(
             ["nvim", "--server", str(self.session_socket), "--remote-send", payload]
         )
 
-    def detached(self, target: Target):
-        args = ["nvim"]
-        cursor = _vim_cursor_arg(target)
-        if cursor:
-            args.append(cursor)
-        args.append(str(target.path))
+    def detached(self, targets: list[Target]):
+        if not targets:
+            raise ValueError("detached requires at least one target")
+        args = ["nvim", *_build_nvim_file_args(targets)]
         subprocess.run(args)

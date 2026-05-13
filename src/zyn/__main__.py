@@ -27,14 +27,13 @@ EDITORS: dict[EditorName, type[Editor]] = {
 
 @app.command()
 def main(
-    target: Annotated[
-        Target,
+    targets: Annotated[
+        list[Target] | None,
         typer.Argument(
             parser=Target.parse,
-            default_factory=lambda: Target(Path.cwd()),
-            help="File to open, optionally with :line or :line:col",
+            help="One or more files to open, each optionally with :line or :line:col",
         ),
-    ],
+    ] = None,
     editor: Annotated[
         EditorName, typer.Option("-e", "--editor", envvar="ZYN_EDITOR")
     ] = EditorName.nvim,
@@ -79,14 +78,18 @@ def main(
     except ValueError as e:
         raise typer.BadParameter(str(e), param_hint="--scope") from e
 
+    if not targets:
+        targets = [Target(Path.cwd())]
+
     editor_cls = EDITORS[editor]
+    primary = targets[0].path
 
     if detached:
-        editor_cls().detached(target)
+        editor_cls().detached(targets)
         return
 
     if start:
-        root = workspace or (target.path if target.path.is_dir() else target.path.parent)
+        root = workspace or (primary if primary.is_dir() else primary.parent)
         if Editor.has_live_session(root, session_scope):
             raise typer.BadParameter(f"session already exists at {root}")
         lock = Editor.acquire_start_lock(root, session_scope)
@@ -97,7 +100,7 @@ def main(
             )
         try:
             with editor_cls.create_session(root, session_scope) as e:
-                e.launch(target)
+                e.launch(targets)
         finally:
             Editor.release_start_lock(lock)
         return
@@ -105,12 +108,12 @@ def main(
     instance = (
         editor_cls.attach(workspace, session_scope)
         if workspace
-        else editor_cls.discover(target.path, session_scope, wait_pending=True)
+        else editor_cls.discover(primary, session_scope, wait_pending=True)
     )
     if instance:
-        instance.open(target, focus=not no_focus)
+        instance.open(targets, focus=not no_focus)
     else:
-        editor_cls().detached(target)
+        editor_cls().detached(targets)
 
 
 if __name__ == "__main__":

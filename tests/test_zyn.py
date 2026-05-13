@@ -56,18 +56,52 @@ def make_stale_socket(path: Path) -> None:
 
 
 def expected_open_payload(
-    path: Path, line: int | None = None, col: int | None = None, focus: bool = True
+    target_or_path,
+    line: int | None = None,
+    col: int | None = None,
+    focus: bool = True,
 ) -> str:
-    """Build the --remote-send payload Neovim.open should emit for a target."""
-    escaped = str(path.resolve()).replace("\\", "\\\\").replace(" ", r"\ ")
-    cmd = f"tab drop {escaped}"
-    if line and col:
-        cmd += f" | call cursor({line},{col})"
-    elif line:
-        cmd += f" | {line}"
+    """Build the --remote-send payload Neovim.open should emit.
+
+    Accepts either a single Path (with optional line/col kwargs) or a
+    list[Target] for multi-file payloads.
+    """
+    if isinstance(target_or_path, list):
+        targets = target_or_path
+    else:
+        targets = [Target(target_or_path, line, col)]
+    parts = []
+    for t in targets:
+        escaped = str(t.path.resolve()).replace("\\", "\\\\").replace(" ", r"\ ")
+        parts.append(f"tab drop {escaped}")
+    last = targets[-1]
+    if last.line and last.col:
+        parts.append(f"call cursor({last.line},{last.col})")
+    elif last.line:
+        parts.append(str(last.line))
     if focus:
-        cmd += " | lua if type(Zyn)=='table' then Zyn.focus() end"
-    return f"<Esc>:{cmd}<CR>"
+        parts.append("lua if type(Zyn)=='table' then Zyn.focus() end")
+    return f"<Esc>:{' | '.join(parts)}<CR>"
+
+
+def expected_nvim_files_argv(
+    target_or_path,
+    line: int | None = None,
+    col: int | None = None,
+) -> list[str]:
+    """Build the trailing portion of `nvim`/`nvim --listen` argv (-p tabs +
+    optional `-c "tablast | <cursor>"`)."""
+    if isinstance(target_or_path, list):
+        targets = target_or_path
+    else:
+        targets = [Target(target_or_path, line, col)]
+    args = ["-p", *[str(t.path) for t in targets]]
+    last = targets[-1]
+    if last.line and last.col:
+        args.extend(["-c", f"tablast | call cursor({last.line},{last.col})"])
+    elif last.line:
+        args.extend(["-c", f"tablast | {last.line}"])
+    return args
 
 
 runner = CliRunner()
@@ -82,7 +116,7 @@ def test_default_no_session_runs_detached(sockets_dir, tmp_path):
     with patch("zyn.editors.subprocess.run") as mock_run:
         result = runner.invoke(app, [str(f)])
     assert result.exit_code == 0
-    mock_run.assert_called_once_with(["nvim", str(f)])
+    mock_run.assert_called_once_with(["nvim", *expected_nvim_files_argv(f)])
 
 
 def test_default_attaches_to_session_at_parent(sockets_dir, tmp_path):
@@ -132,7 +166,7 @@ def test_default_stale_socket_falls_back_to_detached(sockets_dir, tmp_path):
     with patch("zyn.editors.subprocess.run") as mock_run:
         result = runner.invoke(app, [str(f)])
     assert result.exit_code == 0
-    mock_run.assert_called_once_with(["nvim", str(f)])
+    mock_run.assert_called_once_with(["nvim", *expected_nvim_files_argv(f)])
     assert not sock_path.exists()
 
 
@@ -148,7 +182,9 @@ def test_start_no_session_creates_session(sockets_dir, tmp_path):
     with patch("zyn.editors.subprocess.run") as mock_run:
         result = runner.invoke(app, ["-s", str(f)])
     assert result.exit_code == 0
-    mock_run.assert_called_once_with(["nvim", "--listen", str(sock_path), str(f)])
+    mock_run.assert_called_once_with(
+        ["nvim", "--listen", str(sock_path), *expected_nvim_files_argv(f)]
+    )
 
 
 def test_start_with_directory_uses_dir_as_root(sockets_dir, tmp_path):
@@ -158,7 +194,9 @@ def test_start_with_directory_uses_dir_as_root(sockets_dir, tmp_path):
     with patch("zyn.editors.subprocess.run") as mock_run:
         result = runner.invoke(app, ["-s", str(project)])
     assert result.exit_code == 0
-    mock_run.assert_called_once_with(["nvim", "--listen", str(sock_path), str(project)])
+    mock_run.assert_called_once_with(
+        ["nvim", "--listen", str(sock_path), *expected_nvim_files_argv(project)]
+    )
 
 
 def test_start_errors_when_live_session_exists(sockets_dir, tmp_path):
@@ -186,7 +224,9 @@ def test_start_treats_stale_socket_as_no_session(sockets_dir, tmp_path):
     with patch("zyn.editors.subprocess.run") as mock_run:
         result = runner.invoke(app, ["-s", str(f)])
     assert result.exit_code == 0
-    mock_run.assert_called_once_with(["nvim", "--listen", str(sock_path), str(f)])
+    mock_run.assert_called_once_with(
+        ["nvim", "--listen", str(sock_path), *expected_nvim_files_argv(f)]
+    )
 
 
 # --- CLI: --detached ---
@@ -202,7 +242,7 @@ def test_detached_ignores_existing_session(sockets_dir, tmp_path):
         with patch("zyn.editors.subprocess.run") as mock_run:
             result = runner.invoke(app, ["-d", str(f)])
         assert result.exit_code == 0
-        mock_run.assert_called_once_with(["nvim", str(f)])
+        mock_run.assert_called_once_with(["nvim", *expected_nvim_files_argv(f)])
     finally:
         s.close()
 
@@ -239,7 +279,7 @@ def test_workspace_does_not_walk_up(sockets_dir, tmp_path):
         with patch("zyn.editors.subprocess.run") as mock_run:
             result = runner.invoke(app, ["-w", str(sub), str(f)])
         assert result.exit_code == 0
-        mock_run.assert_called_once_with(["nvim", str(f)])
+        mock_run.assert_called_once_with(["nvim", *expected_nvim_files_argv(f)])
     finally:
         s.close()
 
@@ -254,7 +294,9 @@ def test_workspace_with_start_uses_workspace_as_root(sockets_dir, tmp_path):
     with patch("zyn.editors.subprocess.run") as mock_run:
         result = runner.invoke(app, ["-w", str(project), "-s", str(f)])
     assert result.exit_code == 0
-    mock_run.assert_called_once_with(["nvim", "--listen", str(sock_path), str(f)])
+    mock_run.assert_called_once_with(
+        ["nvim", "--listen", str(sock_path), *expected_nvim_files_argv(f)]
+    )
 
 
 # --- CLI: error cases ---
@@ -429,23 +471,25 @@ def test_target_parse_absolute_path_with_line():
 # --- CLI: line/col routing ---
 
 
-def test_cli_detached_with_line_emits_plus_lineno(sockets_dir, tmp_path):
+def test_cli_detached_with_line_uses_tablast_cursor(sockets_dir, tmp_path):
     f = tmp_path / "file.txt"
     f.touch()
     with patch("zyn.editors.subprocess.run") as mock_run:
         result = runner.invoke(app, [f"{f}:42"])
     assert result.exit_code == 0
-    mock_run.assert_called_once_with(["nvim", "+42", str(f)])
+    mock_run.assert_called_once_with(
+        ["nvim", *expected_nvim_files_argv(f, line=42)]
+    )
 
 
-def test_cli_detached_with_line_and_col_emits_cursor_call(sockets_dir, tmp_path):
+def test_cli_detached_with_line_and_col_uses_tablast_cursor(sockets_dir, tmp_path):
     f = tmp_path / "file.txt"
     f.touch()
     with patch("zyn.editors.subprocess.run") as mock_run:
         result = runner.invoke(app, [f"{f}:42:5"])
     assert result.exit_code == 0
     mock_run.assert_called_once_with(
-        ["nvim", "+call cursor(42,5)", str(f)]
+        ["nvim", *expected_nvim_files_argv(f, line=42, col=5)]
     )
 
 
@@ -483,7 +527,7 @@ def test_cli_start_with_line_creates_session_and_jumps(sockets_dir, tmp_path):
         result = runner.invoke(app, ["-s", f"{f}:42"])
     assert result.exit_code == 0
     mock_run.assert_called_once_with(
-        ["nvim", "--listen", str(sock_path), "+42", str(f)]
+        ["nvim", "--listen", str(sock_path), *expected_nvim_files_argv(f, line=42)]
     )
 
 
@@ -600,7 +644,7 @@ def test_cli_session_in_zellij_isolated_from_plain(sockets_dir, tmp_path, monkey
         with patch("zyn.editors.subprocess.run") as mock_run:
             result = runner.invoke(app, [str(f)])
         assert result.exit_code == 0
-        mock_run.assert_called_once_with(["nvim", str(f)])
+        mock_run.assert_called_once_with(["nvim", *expected_nvim_files_argv(f)])
     finally:
         s.close()
 
@@ -639,7 +683,7 @@ def test_cli_start_creates_session_at_scoped_key(sockets_dir, tmp_path, monkeypa
         result = runner.invoke(app, ["-s", str(f)])
     assert result.exit_code == 0
     mock_run.assert_called_once_with(
-        ["nvim", "--listen", str(scoped_sock), str(f)]
+        ["nvim", "--listen", str(scoped_sock), *expected_nvim_files_argv(f)]
     )
 
 
@@ -890,6 +934,84 @@ def test_cli_default_waits_for_pending_then_attaches(sockets_dir, tmp_path):
         Editor.release_start_lock(lock)
 
 
+# --- Multi-file ---
+
+
+def test_cli_multi_file_detached(sockets_dir, tmp_path):
+    f1 = tmp_path / "a.txt"
+    f2 = tmp_path / "b.txt"
+    f1.touch()
+    f2.touch()
+    with patch("zyn.editors.subprocess.run") as mock_run:
+        result = runner.invoke(app, [str(f1), str(f2)])
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with(
+        ["nvim", *expected_nvim_files_argv([Target(f1), Target(f2)])]
+    )
+
+
+def test_cli_multi_file_cursor_lands_on_last(sockets_dir, tmp_path):
+    f1 = tmp_path / "a.txt"
+    f2 = tmp_path / "b.txt"
+    f1.touch()
+    f2.touch()
+    with patch("zyn.editors.subprocess.run") as mock_run:
+        result = runner.invoke(app, [str(f1), f"{f2}:42:5"])
+    assert result.exit_code == 0
+    argv = mock_run.call_args[0][0]
+    # cursor is on the last file via -c "tablast | call cursor(...)"
+    assert "-c" in argv
+    c_idx = argv.index("-c")
+    assert argv[c_idx + 1] == "tablast | call cursor(42,5)"
+
+
+def test_cli_multi_file_attach_chains_tab_drop(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f1 = project / "a.txt"
+    f2 = project / "b.txt"
+    f1.touch()
+    f2.touch()
+    sock_path = Editor.get_socket_for(project)
+    s = make_live_socket(sock_path)
+    try:
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, [str(f1), f"{f2}:42"])
+        assert result.exit_code == 0
+        mock_run.assert_called_once_with(
+            [
+                "nvim",
+                "--server",
+                str(sock_path),
+                "--remote-send",
+                expected_open_payload([Target(f1), Target(f2, 42)]),
+            ]
+        )
+    finally:
+        s.close()
+
+
+def test_cli_multi_file_start_loads_all_with_cursor_on_last(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f1 = project / "a.txt"
+    f2 = project / "b.txt"
+    f1.touch()
+    f2.touch()
+    sock_path = Editor.get_socket_for(project)
+    with patch("zyn.editors.subprocess.run") as mock_run:
+        result = runner.invoke(app, ["-s", str(f1), f"{f2}:42:5"])
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with(
+        [
+            "nvim",
+            "--listen",
+            str(sock_path),
+            *expected_nvim_files_argv([Target(f1), Target(f2, 42, 5)]),
+        ]
+    )
+
+
 def test_cli_default_falls_to_detached_when_lock_holder_gives_up(sockets_dir, tmp_path):
     project = tmp_path / "project"
     project.mkdir()
@@ -908,6 +1030,6 @@ def test_cli_default_falls_to_detached_when_lock_holder_gives_up(sockets_dir, tm
             result = runner.invoke(app, [str(f)])
         assert result.exit_code == 0
         argv = mock_run.call_args[0][0]
-        assert argv == ["nvim", str(f)]  # detached fallback
+        assert argv == ["nvim", *expected_nvim_files_argv(f)]  # detached fallback
     finally:
         t.join()
