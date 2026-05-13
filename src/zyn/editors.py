@@ -36,6 +36,13 @@ class Editor:
             self.socket = self.socket_path()
         return self.socket
 
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *_) -> None:
+        if self.socket:
+            self.socket.unlink(missing_ok=True)
+
     def open(self, file: Path) -> None:
         raise NotImplementedError()
 

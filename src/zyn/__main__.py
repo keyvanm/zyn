@@ -28,7 +28,8 @@ def main(file: Annotated[Path, typer.Argument()]) -> None:
         editor.open(file)
     else:
         root = file if file.is_dir() else file.parent
-        editor_cls(root=root).start(file)
+        with editor_cls(root=root) as editor:
+            editor.start(file)
 
 
 if __name__ == "__main__":
