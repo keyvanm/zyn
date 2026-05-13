@@ -19,9 +19,9 @@ def socket_path(root: Path) -> Path:
     return zyn_dir() / f"{key}.sock"
 
 
-def find_socket() -> Path | None:
-    cwd = Path.cwd().resolve()
-    for directory in itertools.chain([cwd], cwd.parents):
+def find_socket(path: Path) -> Path | None:
+    dir_path = path if path.is_dir() else path.parent
+    for directory in itertools.chain([dir_path], dir_path.parents):
         sock = socket_path(directory)
         if sock.is_socket():
             return sock
@@ -31,7 +31,7 @@ def find_socket() -> Path | None:
 @app.command()
 def main(file: Path = Path.cwd()) -> None:
     editor = os.environ.get("ZYN_EDITOR", "nvim")
-    socket = find_socket()
+    socket = find_socket(file)
 
     if socket:
         subprocess.run([editor, "--server", str(socket), "--remote", file])
