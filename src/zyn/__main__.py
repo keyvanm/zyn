@@ -1,10 +1,12 @@
-#!/usr/bin/env python3
-
 import hashlib
+import itertools
 import os
 import subprocess
-import sys
 from pathlib import Path
+
+import typer
+
+app = typer.Typer()
 
 
 def zyn_dir() -> Path:
@@ -18,19 +20,16 @@ def socket_path(root: Path) -> Path:
 
 
 def find_socket() -> Path | None:
-    for directory in [Path.cwd().resolve(), *Path.cwd().resolve().parents]:
+    cwd = Path.cwd().resolve()
+    for directory in itertools.chain([cwd], cwd.parents):
         sock = socket_path(directory)
         if sock.is_socket():
             return sock
     return None
 
 
-def main() -> None:
-    if len(sys.argv) < 2:
-        print("usage: zyn <file>", file=sys.stderr)
-        sys.exit(1)
-
-    file = sys.argv[1]
+@app.command()
+def main(file: str) -> None:
     editor = os.environ.get("ZYN_EDITOR", "nvim")
     socket = find_socket()
 
@@ -43,4 +42,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    app()

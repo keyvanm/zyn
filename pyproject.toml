@@ -1,0 +1,17 @@
+[project]
+name = "zyn"
+version = "0.0.1"
+description = "One editor per workspace"
+readme = "README.md"
+authors = [
+    { name = "Keyvan Mosharraf", email = "keyvan@keyvanm.com" }
+]
+requires-python = ">=3.14"
+dependencies = ["typer"]
+
+[project.scripts]
+zyn = "zyn.__main__:app"
+
+[build-system]
+requires = ["uv_build>=0.11.14,<0.12.0"]
+build-backend = "uv_build"
