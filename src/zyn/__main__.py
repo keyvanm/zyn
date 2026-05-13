@@ -9,20 +9,20 @@ import typer
 app = typer.Typer()
 
 
-def zyn_dir() -> Path:
+def get_sockets_dir() -> Path:
     runtime = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
     return Path(runtime) / "zyn"
 
 
-def socket_path(root: Path) -> Path:
-    key = hashlib.md5(str(root).encode()).hexdigest()
-    return zyn_dir() / f"{key}.sock"
+def get_socket_for_root(path: Path) -> Path:
+    key = hashlib.md5(str(path).encode()).hexdigest()
+    return get_sockets_dir() / f"{key}.sock"
 
 
 def find_socket(path: Path) -> Path | None:
     dir_path = path if path.is_dir() else path.parent
     for directory in itertools.chain([dir_path], dir_path.parents):
-        sock = socket_path(directory)
+        sock = get_socket_for_root(directory)
         if sock.is_socket():
             return sock
     return None
@@ -36,8 +36,8 @@ def main(file: Path = Path.cwd()) -> None:
     if socket:
         subprocess.run([editor, "--server", str(socket), "--remote", file])
     else:
-        zyn_dir().mkdir(parents=True, exist_ok=True)
-        sock = socket_path(Path.cwd().resolve())
+        get_sockets_dir().mkdir(parents=True, exist_ok=True)
+        sock = get_socket_for_root(file if file.is_dir() else file.parent)
         subprocess.run([editor, "--listen", str(sock), file])
 
 
