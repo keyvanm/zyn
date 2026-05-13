@@ -1,4 +1,7 @@
+import os
 import socket as _socket
+import threading
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -7,6 +10,7 @@ from typer.testing import CliRunner
 
 from zyn.__main__ import app
 from zyn.editors import (
+    STALE_LOCK_AGE_SECONDS,
     Editor,
     Neovim,
     SessionScope,
@@ -726,3 +730,184 @@ def test_open_payload_escapes_spaces_in_path(sockets_dir, tmp_path):
         assert r"file\ with\ spaces.txt" in payload
     finally:
         s.close()
+
+
+# --- Race handling: lock acquire/release ---
+
+
+def test_acquire_lock_returns_path_first_then_none(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    lock1 = Editor.acquire_start_lock(project)
+    assert lock1 is not None and lock1.is_dir()
+    lock2 = Editor.acquire_start_lock(project)
+    assert lock2 is None
+    Editor.release_start_lock(lock1)
+
+
+def test_release_unblocks_subsequent_acquire(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    lock1 = Editor.acquire_start_lock(project)
+    Editor.release_start_lock(lock1)
+    lock2 = Editor.acquire_start_lock(project)
+    assert lock2 is not None
+    Editor.release_start_lock(lock2)
+
+
+def test_acquire_lock_cleans_up_stale_and_succeeds(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    lock = Editor.lock_path_for(project)
+    lock.mkdir(parents=True)
+    # Backdate the lock so it looks stale
+    old = time.time() - (STALE_LOCK_AGE_SECONDS + 5)
+    os.utime(lock, (old, old))
+    fresh = Editor.acquire_start_lock(project)
+    assert fresh is not None
+    Editor.release_start_lock(fresh)
+
+
+def test_is_session_pending_false_when_live_socket_exists(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    sock_path = Editor.get_socket_for(project)
+    lock = Editor.acquire_start_lock(project)
+    s = make_live_socket(sock_path)
+    try:
+        assert Editor.is_session_pending(project) is False
+    finally:
+        s.close()
+        Editor.release_start_lock(lock)
+
+
+def test_is_session_pending_true_when_lock_held_no_socket(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    lock = Editor.acquire_start_lock(project)
+    try:
+        assert Editor.is_session_pending(project) is True
+    finally:
+        Editor.release_start_lock(lock)
+
+
+# --- Race handling: wait_for_session ---
+
+
+def test_wait_for_session_returns_true_when_socket_binds(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    sock_path = Editor.get_socket_for(project)
+    lock = Editor.acquire_start_lock(project)
+    bound = []
+
+    def bind_after_delay():
+        time.sleep(0.15)
+        bound.append(make_live_socket(sock_path))
+
+    t = threading.Thread(target=bind_after_delay)
+    t.start()
+    try:
+        assert Editor.wait_for_session(project, timeout=2.0) is True
+    finally:
+        t.join()
+        for s in bound:
+            s.close()
+        Editor.release_start_lock(lock)
+
+
+def test_wait_for_session_bails_when_lock_disappears(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    lock = Editor.acquire_start_lock(project)
+
+    def release_after_delay():
+        time.sleep(0.15)
+        Editor.release_start_lock(lock)
+
+    t = threading.Thread(target=release_after_delay)
+    t.start()
+    try:
+        assert Editor.wait_for_session(project, timeout=2.0) is False
+    finally:
+        t.join()
+
+
+def test_wait_for_session_returns_false_on_timeout(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    lock = Editor.acquire_start_lock(project)
+    try:
+        # Lock held, no socket, never binds — should time out
+        assert Editor.wait_for_session(project, timeout=0.3) is False
+    finally:
+        Editor.release_start_lock(lock)
+
+
+# --- Race handling: CLI integration ---
+
+
+def test_cli_start_errors_when_lock_already_held(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    lock = Editor.acquire_start_lock(project)
+    try:
+        result = runner.invoke(app, ["-s", str(f)])
+        assert result.exit_code != 0
+        assert "creation in progress" in result.output
+    finally:
+        Editor.release_start_lock(lock)
+
+
+def test_cli_default_waits_for_pending_then_attaches(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    sock_path = Editor.get_socket_for(project)
+    lock = Editor.acquire_start_lock(project)
+    bound = []
+
+    def bind_async():
+        time.sleep(0.15)
+        bound.append(make_live_socket(sock_path))
+
+    t = threading.Thread(target=bind_async)
+    t.start()
+    try:
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, [str(f)])
+        assert result.exit_code == 0
+        # Should have attached (--remote-send), not detached (just `nvim file`)
+        argv = mock_run.call_args[0][0]
+        assert "--remote-send" in argv
+    finally:
+        t.join()
+        for s in bound:
+            s.close()
+        Editor.release_start_lock(lock)
+
+
+def test_cli_default_falls_to_detached_when_lock_holder_gives_up(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    lock = Editor.acquire_start_lock(project)
+
+    def release_async():
+        time.sleep(0.15)
+        Editor.release_start_lock(lock)
+
+    t = threading.Thread(target=release_async)
+    t.start()
+    try:
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, [str(f)])
+        assert result.exit_code == 0
+        argv = mock_run.call_args[0][0]
+        assert argv == ["nvim", str(f)]  # detached fallback
+    finally:
+        t.join()
