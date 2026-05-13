@@ -51,6 +51,21 @@ def make_stale_socket(path: Path) -> None:
     s.close()
 
 
+def expected_open_payload(
+    path: Path, line: int | None = None, col: int | None = None, focus: bool = True
+) -> str:
+    """Build the --remote-send payload Neovim.open should emit for a target."""
+    escaped = str(path.resolve()).replace("\\", "\\\\").replace(" ", r"\ ")
+    cmd = f"tab drop {escaped}"
+    if line and col:
+        cmd += f" | call cursor({line},{col})"
+    elif line:
+        cmd += f" | {line}"
+    if focus:
+        cmd += " | lua if type(Zyn)=='table' then Zyn.focus() end"
+    return f"<Esc>:{cmd}<CR>"
+
+
 runner = CliRunner()
 
 
@@ -78,7 +93,7 @@ def test_default_attaches_to_session_at_parent(sockets_dir, tmp_path):
             result = runner.invoke(app, [str(f)])
         assert result.exit_code == 0
         mock_run.assert_called_once_with(
-            ["nvim", "--server", str(sock_path), "--remote", str(f)]
+            ["nvim", "--server", str(sock_path), "--remote-send", expected_open_payload(f)]
         )
     finally:
         s.close()
@@ -97,7 +112,7 @@ def test_default_walks_up_to_ancestor_session(sockets_dir, tmp_path):
             result = runner.invoke(app, [str(f)])
         assert result.exit_code == 0
         mock_run.assert_called_once_with(
-            ["nvim", "--server", str(sock_path), "--remote", str(f)]
+            ["nvim", "--server", str(sock_path), "--remote-send", expected_open_payload(f)]
         )
     finally:
         s.close()
@@ -203,7 +218,7 @@ def test_workspace_attaches_at_exact_root(sockets_dir, tmp_path):
             result = runner.invoke(app, ["-w", str(project), str(f)])
         assert result.exit_code == 0
         mock_run.assert_called_once_with(
-            ["nvim", "--server", str(sock_path), "--remote", str(f)]
+            ["nvim", "--server", str(sock_path), "--remote-send", expected_open_payload(f)]
         )
     finally:
         s.close()
@@ -446,9 +461,8 @@ def test_cli_attach_with_line_passes_cursor_arg(sockets_dir, tmp_path):
                 "nvim",
                 "--server",
                 str(sock_path),
-                "--remote",
-                "+call cursor(42,5)",
-                str(f),
+                "--remote-send",
+                expected_open_payload(f, line=42, col=5),
             ]
         )
     finally:
@@ -601,7 +615,7 @@ def test_cli_scope_none_ignores_zellij_env(sockets_dir, tmp_path, monkeypatch):
             result = runner.invoke(app, ["--scope", "none", str(f)])
         assert result.exit_code == 0
         mock_run.assert_called_once_with(
-            ["nvim", "--server", str(plain_sock), "--remote", str(f)]
+            ["nvim", "--server", str(plain_sock), "--remote-send", expected_open_payload(f)]
         )
     finally:
         s.close()
@@ -631,3 +645,84 @@ def test_cli_invalid_scope_errors(sockets_dir, tmp_path):
     result = runner.invoke(app, ["--scope", "bogus", str(f)])
     assert result.exit_code != 0
     assert "unknown scope dimension" in result.output
+
+
+# --- Focus trigger ---
+
+
+def test_attach_payload_includes_focus_trigger_by_default(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    sock_path = Editor.get_socket_for(project)
+    s = make_live_socket(sock_path)
+    try:
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, [str(f)])
+        assert result.exit_code == 0
+        payload = mock_run.call_args[0][0][-1]
+        assert "lua if type(Zyn)=='table' then Zyn.focus() end" in payload
+    finally:
+        s.close()
+
+
+def test_no_focus_flag_omits_focus_trigger(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    sock_path = Editor.get_socket_for(project)
+    s = make_live_socket(sock_path)
+    try:
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, ["--no-focus", str(f)])
+        assert result.exit_code == 0
+        mock_run.assert_called_once_with(
+            [
+                "nvim",
+                "--server",
+                str(sock_path),
+                "--remote-send",
+                expected_open_payload(f, focus=False),
+            ]
+        )
+    finally:
+        s.close()
+
+
+def test_zyn_no_focus_env_omits_focus_trigger(sockets_dir, tmp_path, monkeypatch):
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    sock_path = Editor.get_socket_for(project)
+    s = make_live_socket(sock_path)
+    try:
+        monkeypatch.setenv("ZYN_NO_FOCUS", "1")
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, [str(f)])
+        assert result.exit_code == 0
+        payload = mock_run.call_args[0][0][-1]
+        assert "Zyn.focus()" not in payload
+    finally:
+        s.close()
+
+
+def test_open_payload_escapes_spaces_in_path(sockets_dir, tmp_path):
+    project = tmp_path / "weird name"
+    project.mkdir()
+    f = project / "file with spaces.txt"
+    f.touch()
+    sock_path = Editor.get_socket_for(project)
+    s = make_live_socket(sock_path)
+    try:
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, [str(f)])
+        assert result.exit_code == 0
+        payload = mock_run.call_args[0][0][-1]
+        # spaces escaped with backslash inside the :tab drop arg
+        assert r"weird\ name" in payload
+        assert r"file\ with\ spaces.txt" in payload
+    finally:
+        s.close()

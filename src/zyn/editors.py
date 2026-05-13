@@ -229,8 +229,13 @@ class Editor:
         """Start a new editor process listening on session_socket; optionally open target."""
         raise NotImplementedError
 
-    def open(self, target: Target):
-        """Route target to the existing session at session_socket."""
+    def open(self, target: Target, focus: bool = True):
+        """Route target to the existing session at session_socket.
+
+        `focus` triggers an editor-side hook (e.g. `Zyn.focus()` in nvim)
+        that brings the editor's pane to the foreground if a multiplexer
+        plugin is installed. No-op otherwise.
+        """
         raise NotImplementedError
 
     def detached(self, target: Target):
@@ -260,15 +265,22 @@ class Neovim(Editor):
             args.append(str(target.path))
         subprocess.run(args)
 
-    def open(self, target: Target):
+    def open(self, target: Target, focus: bool = True):
         if not self.session_socket:
             raise ValueError("open requires a session_socket; use detached() for raw editor")
-        args = ["nvim", "--server", str(self.session_socket), "--remote"]
-        cursor = _vim_cursor_arg(target)
-        if cursor:
-            args.append(cursor)
-        args.append(str(target.path))
-        subprocess.run(args)
+        abs_path = target.path.resolve()
+        escaped = str(abs_path).replace("\\", "\\\\").replace(" ", r"\ ")
+        cmd = f"tab drop {escaped}"
+        if target.line and target.col:
+            cmd += f" | call cursor({target.line},{target.col})"
+        elif target.line:
+            cmd += f" | {target.line}"
+        if focus:
+            cmd += " | lua if type(Zyn)=='table' then Zyn.focus() end"
+        payload = f"<Esc>:{cmd}<CR>"
+        subprocess.run(
+            ["nvim", "--server", str(self.session_socket), "--remote-send", payload]
+        )
 
     def detached(self, target: Target):
         args = ["nvim"]

@@ -62,6 +62,14 @@ def main(
             help="Scope dimensions: comma-list of mux,wm — or 'all'/'none'",
         ),
     ] = DEFAULT_SCOPE,
+    no_focus: Annotated[
+        bool,
+        typer.Option(
+            "--no-focus",
+            envvar="ZYN_NO_FOCUS",
+            help="Don't trigger editor-side focus after routing",
+        ),
+    ] = False,
 ) -> None:
     if start and detached:
         raise typer.BadParameter("--start and --detached are mutually exclusive")
@@ -91,7 +99,7 @@ def main(
         else editor_cls.discover(target.path, session_scope)
     )
     if instance:
-        instance.open(target)
+        instance.open(target, focus=not no_focus)
     else:
         editor_cls().detached(target)
 
