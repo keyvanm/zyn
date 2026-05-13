@@ -25,7 +25,7 @@ class Editor:
         for directory in itertools.chain([dir_path], dir_path.parents):
             sock = cls.socket_path_for(directory)
             if sock.is_socket():
-                return cls(root=directory, socket=sock)
+                return cls(root=directory.resolve(), socket=sock)
         return None
 
     def ensure_socket(self) -> Path:
