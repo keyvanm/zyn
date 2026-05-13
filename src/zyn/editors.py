@@ -14,19 +14,16 @@ class Editor:
     root: Path
     socket: Path | None = field(default=None)
 
-    def __post_init__(self) -> None:
-        self.root = self.root.resolve()
-
-    @property
-    def default_socket_path(self) -> Path:
-        key = hashlib.md5(str(self.root).encode()).hexdigest()
+    @staticmethod
+    def socket_path_for(root: Path) -> Path:
+        key = hashlib.md5(str(root.resolve()).encode()).hexdigest()
         return SOCKETS_DIR / f"{key}.sock"
 
     @classmethod
     def discover(cls, path: Path) -> Self | None:
         dir_path = path if path.is_dir() else path.parent
         for directory in itertools.chain([dir_path], dir_path.parents):
-            sock = cls(root=directory).default_socket_path
+            sock = cls.socket_path_for(directory)
             if sock.is_socket():
                 return cls(root=directory, socket=sock)
         return None
@@ -34,7 +31,7 @@ class Editor:
     def ensure_socket(self) -> Path:
         SOCKETS_DIR.mkdir(parents=True, exist_ok=True)
         if self.socket is None:
-            self.socket = self.default_socket_path
+            self.socket = self.socket_path_for(self.root)
         return self.socket
 
     def __enter__(self) -> Self:
