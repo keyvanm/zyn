@@ -1,4 +1,4 @@
-import os
+import enum
 from pathlib import Path
 from typing import Annotated
 
@@ -8,19 +8,40 @@ from zyn.editors import Editor, Neovim
 
 app = typer.Typer()
 
-EDITORS: dict[str, type[Editor]] = {
-    "nvim": Neovim,
+
+class EditorName(str, enum.Enum):
+    nvim = "nvim"
+
+
+EDITORS: dict[EditorName, type[Editor]] = {
+    EditorName.nvim: Neovim,
 }
 
 
+@app.callback()
+def callback(
+    ctx: typer.Context,
+    editor: Annotated[
+        EditorName, typer.Option(envvar="ZYN_EDITOR")
+    ] = EditorName.nvim,
+):
+    ctx.obj = EDITORS[editor]
+
+
 @app.command()
-def main(file: Annotated[Path, typer.Argument()]) -> None:
-    editor_name = os.environ.get("ZYN_EDITOR", "nvim")
-    editor_cls = EDITORS.get(editor_name)
-    if editor_cls is None:
-        raise typer.BadParameter(
-            f"unsupported editor: {editor_name}", param_hint="ZYN_EDITOR"
-        )
+def start(
+    ctx: typer.Context,
+    workspace_root: Annotated[
+        Path | None, typer.Option("-w", "--workspace", default_factory=Path.cwd)
+    ],
+):
+    editor_cls: type[Editor] = ctx.obj
+    editor_cls(root=workspace_root)
+
+
+@app.command()
+def main(ctx: typer.Context, file: Annotated[Path, typer.Argument()]) -> None:
+    editor_cls: type[Editor] = ctx.obj
 
     editor = editor_cls.discover(file)
     print(editor)
