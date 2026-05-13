@@ -29,7 +29,7 @@ def find_socket() -> Path | None:
 
 
 @app.command()
-def main(file: str) -> None:
+def main(file: Path = Path.cwd()) -> None:
     editor = os.environ.get("ZYN_EDITOR", "nvim")
     socket = find_socket()
 
