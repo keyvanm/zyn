@@ -322,6 +322,15 @@ class Editor:
         """Run the editor with no session machinery."""
         raise NotImplementedError
 
+    def focus(self):
+        """Trigger the editor-side focus hook without opening any file.
+
+        For session-routable editors, sends a no-op-but-for-focus message to
+        the existing session at session_socket. Subclasses that don't support
+        focus-only routing can leave this as the default NotImplementedError.
+        """
+        raise NotImplementedError
+
 
 def _vim_cursor_arg(target: Target) -> str | None:
     if target.line and target.col:
@@ -388,3 +397,11 @@ class Neovim(Editor):
             raise ValueError("detached requires at least one target")
         args = ["nvim", *_build_nvim_file_args(targets)]
         subprocess.run(args)
+
+    def focus(self):
+        if not self.session_socket:
+            raise ValueError("focus requires a session_socket")
+        payload = "<Esc>:lua if type(Zyn)=='table' then Zyn.focus() end<CR>"
+        subprocess.run(
+            ["nvim", "--server", str(self.session_socket), "--remote-send", payload]
+        )

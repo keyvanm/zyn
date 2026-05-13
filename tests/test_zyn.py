@@ -934,6 +934,92 @@ def test_cli_default_waits_for_pending_then_attaches(sockets_dir, tmp_path):
         Editor.release_start_lock(lock)
 
 
+# --- --reveal ---
+
+
+REVEAL_PAYLOAD = "<Esc>:lua if type(Zyn)=='table' then Zyn.focus() end<CR>"
+
+
+def test_reveal_focuses_existing_session(sockets_dir, tmp_path, monkeypatch):
+    project = tmp_path / "project"
+    project.mkdir()
+    monkeypatch.chdir(project)
+    sock_path = Editor.get_socket_for(project)
+    s = make_live_socket(sock_path)
+    try:
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, ["--reveal"])
+        assert result.exit_code == 0
+        mock_run.assert_called_once_with(
+            ["nvim", "--server", str(sock_path), "--remote-send", REVEAL_PAYLOAD]
+        )
+    finally:
+        s.close()
+
+
+def test_reveal_walks_up_to_ancestor_session(sockets_dir, tmp_path, monkeypatch):
+    project = tmp_path / "project"
+    sub = project / "deep" / "sub"
+    sub.mkdir(parents=True)
+    monkeypatch.chdir(sub)
+    sock_path = Editor.get_socket_for(project)
+    s = make_live_socket(sock_path)
+    try:
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, ["--reveal"])
+        assert result.exit_code == 0
+        mock_run.assert_called_once_with(
+            ["nvim", "--server", str(sock_path), "--remote-send", REVEAL_PAYLOAD]
+        )
+    finally:
+        s.close()
+
+
+def test_reveal_with_workspace_attaches_at_exact_root(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    sock_path = Editor.get_socket_for(project)
+    s = make_live_socket(sock_path)
+    try:
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, ["--reveal", "-w", str(project)])
+        assert result.exit_code == 0
+        mock_run.assert_called_once_with(
+            ["nvim", "--server", str(sock_path), "--remote-send", REVEAL_PAYLOAD]
+        )
+    finally:
+        s.close()
+
+
+def test_reveal_errors_when_no_live_session(sockets_dir, tmp_path, monkeypatch):
+    project = tmp_path / "project"
+    project.mkdir()
+    monkeypatch.chdir(project)
+    result = runner.invoke(app, ["--reveal"])
+    assert result.exit_code != 0
+    assert "no live session" in result.output
+
+
+def test_reveal_rejects_file_argument(sockets_dir, tmp_path):
+    f = tmp_path / "file.txt"
+    f.touch()
+    result = runner.invoke(app, ["--reveal", str(f)])
+    assert result.exit_code != 0
+    assert "does not take file arguments" in result.output
+
+
+def test_reveal_mutex_with_start(sockets_dir, tmp_path):
+    result = runner.invoke(app, ["--reveal", "--start"])
+    assert result.exit_code != 0
+    assert "mutually exclusive" in result.output
+
+
+def test_reveal_mutex_with_detached(sockets_dir, tmp_path):
+    result = runner.invoke(app, ["--reveal", "--detached"])
+    assert result.exit_code != 0
+    assert "mutually exclusive" in result.output
+
+
 # --- Multi-file ---
 
 

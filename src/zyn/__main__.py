@@ -69,19 +69,43 @@ def main(
             help="Don't trigger editor-side focus after routing",
         ),
     ] = False,
+    reveal: Annotated[
+        bool,
+        typer.Option(
+            "-r",
+            "--reveal",
+            help="Focus the editor pane without opening a file",
+        ),
+    ] = False,
 ) -> None:
-    if start and detached:
-        raise typer.BadParameter("--start and --detached are mutually exclusive")
+    mutex = [n for n, on in [("--start", start), ("--detached", detached), ("--reveal", reveal)] if on]
+    if len(mutex) > 1:
+        raise typer.BadParameter(f"{', '.join(mutex)} are mutually exclusive")
+    if reveal and targets:
+        raise typer.BadParameter("--reveal does not take file arguments")
 
     try:
         session_scope = build_scope(parse_scope(scope))
     except ValueError as e:
         raise typer.BadParameter(str(e), param_hint="--scope") from e
 
+    editor_cls = EDITORS[editor]
+
+    if reveal:
+        ref_path = workspace or Path.cwd()
+        instance = (
+            editor_cls.attach(workspace, session_scope)
+            if workspace
+            else editor_cls.discover(ref_path, session_scope)
+        )
+        if not instance:
+            raise typer.BadParameter(f"no live session for {ref_path}")
+        instance.focus()
+        return
+
     if not targets:
         targets = [Target(Path.cwd())]
 
-    editor_cls = EDITORS[editor]
     primary = targets[0].path
 
     if detached:
