@@ -1,10 +1,11 @@
 import hashlib
 import itertools
 import os
-import subprocess
 from pathlib import Path
 
 import typer
+
+from zyn.editors import EDITORS
 
 app = typer.Typer()
 
@@ -30,15 +31,19 @@ def find_socket(path: Path) -> Path | None:
 
 @app.command()
 def main(file: Path = Path.cwd()) -> None:
-    editor = os.environ.get("ZYN_EDITOR", "nvim")
+    editor_name = os.environ.get("ZYN_EDITOR", "nvim")
+    editor = EDITORS.get(editor_name)
+    if editor is None:
+        raise typer.BadParameter(f"unsupported editor: {editor_name}", param_hint="ZYN_EDITOR")
+
     socket = find_socket(file)
 
     if socket:
-        subprocess.run([editor, "--server", str(socket), "--remote", file])
+        editor.open(socket, file)
     else:
         get_sockets_dir().mkdir(parents=True, exist_ok=True)
         sock = get_socket_for_root(file if file.is_dir() else file.parent)
-        subprocess.run([editor, "--listen", str(sock), file])
+        editor.start(sock, file)
 
 
 if __name__ == "__main__":
