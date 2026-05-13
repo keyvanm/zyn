@@ -9,12 +9,6 @@ from zyn.__main__ import app
 from zyn.editors import Editor, Neovim
 
 
-def make_unix_socket(path: Path) -> _socket.socket:
-    s = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
-    s.bind(str(path))
-    return s
-
-
 @pytest.fixture
 def sockets_dir(tmp_path, monkeypatch):
     d = tmp_path / "zyn"
@@ -23,182 +17,41 @@ def sockets_dir(tmp_path, monkeypatch):
     return d
 
 
-# --- socket_path_for ---
+def make_live_socket(path: Path) -> _socket.socket:
+    s = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+    s.bind(str(path))
+    s.listen(1)
+    return s
 
 
-def test_socket_path_in_sockets_dir(sockets_dir, tmp_path):
-    root = tmp_path / "project"
-    root.mkdir()
-    assert Editor.socket_path_for(root).parent == sockets_dir
+def make_stale_socket(path: Path) -> None:
+    s = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+    s.bind(str(path))
+    s.close()
 
-
-def test_socket_path_resolves_relative(sockets_dir, tmp_path, monkeypatch):
-    root = tmp_path / "project"
-    root.mkdir()
-    monkeypatch.chdir(root)
-    assert Editor.socket_path_for(Path(".")) == Editor.socket_path_for(root)
-
-
-def test_different_roots_give_different_paths(sockets_dir, tmp_path):
-    a = tmp_path / "a"
-    b = tmp_path / "b"
-    a.mkdir()
-    b.mkdir()
-    assert Editor.socket_path_for(a) != Editor.socket_path_for(b)
-
-
-# --- discover ---
-
-
-def test_discover_no_socket_returns_none(sockets_dir, tmp_path):
-    f = tmp_path / "file.txt"
-    f.touch()
-    assert Editor.discover(f) is None
-
-
-def test_discover_finds_socket_for_exact_dir(sockets_dir, tmp_path):
-    project = tmp_path / "project"
-    project.mkdir()
-    f = project / "file.txt"
-    f.touch()
-    s = make_unix_socket(Editor.socket_path_for(project))
-    try:
-        result = Editor.discover(f)
-        assert result is not None
-        assert result.root == project
-        assert result.socket == Editor.socket_path_for(project)
-    finally:
-        s.close()
-
-
-def test_discover_traverses_to_parent(sockets_dir, tmp_path):
-    project = tmp_path / "project"
-    sub = project / "deep" / "sub"
-    sub.mkdir(parents=True)
-    f = sub / "file.txt"
-    f.touch()
-    s = make_unix_socket(Editor.socket_path_for(project))
-    try:
-        result = Editor.discover(f)
-        assert result is not None
-        assert result.root == project
-    finally:
-        s.close()
-
-
-def test_discover_ignores_unrelated_socket(sockets_dir, tmp_path):
-    a = tmp_path / "a"
-    b = tmp_path / "b"
-    a.mkdir()
-    b.mkdir()
-    f = b / "file.txt"
-    f.touch()
-    s = make_unix_socket(Editor.socket_path_for(a))
-    try:
-        assert Editor.discover(f) is None
-    finally:
-        s.close()
-
-
-def test_discover_with_relative_path(sockets_dir, tmp_path, monkeypatch):
-    project = tmp_path / "project"
-    project.mkdir()
-    f = project / "file.txt"
-    f.touch()
-    monkeypatch.chdir(project)
-    s = make_unix_socket(Editor.socket_path_for(project))
-    try:
-        result = Editor.discover(Path("file.txt"))
-        assert result is not None
-        assert result.root == project
-    finally:
-        s.close()
-
-
-# --- context manager ---
-
-
-def test_context_manager_deletes_socket_on_exit(sockets_dir, tmp_path):
-    project = tmp_path / "project"
-    project.mkdir()
-    editor = Neovim(root=project)
-    sock = editor.ensure_socket()
-    sock.touch()
-    with editor:
-        assert sock.exists()
-    assert not sock.exists()
-
-
-def test_context_manager_deletes_socket_on_exception(sockets_dir, tmp_path):
-    project = tmp_path / "project"
-    project.mkdir()
-    editor = Neovim(root=project)
-    sock = editor.ensure_socket()
-    sock.touch()
-    with pytest.raises(RuntimeError):
-        with editor:
-            raise RuntimeError("boom")
-    assert not sock.exists()
-
-
-def test_context_manager_no_socket_no_error(tmp_path):
-    with Neovim(root=tmp_path):
-        pass
-
-
-# --- Neovim.start ---
-
-
-def test_neovim_start_calls_nvim_listen(sockets_dir, tmp_path):
-    project = tmp_path / "project"
-    project.mkdir()
-    f = project / "file.txt"
-    f.touch()
-    editor = Neovim(root=project)
-    with patch("zyn.editors.subprocess.run") as mock_run:
-        editor.start(f)
-    mock_run.assert_called_once_with(["nvim", "--listen", str(editor.socket), str(f)])
-
-
-# --- Neovim.open ---
-
-
-def test_neovim_open_calls_nvim_remote(sockets_dir, tmp_path):
-    project = tmp_path / "project"
-    project.mkdir()
-    f = project / "file.txt"
-    f.touch()
-    sock_path = sockets_dir / "existing.sock"
-    editor = Neovim(root=project, socket=sock_path)
-    with patch("zyn.editors.subprocess.run") as mock_run:
-        editor.open(f)
-    mock_run.assert_called_once_with(
-        ["nvim", "--server", str(sock_path), "--remote", str(f)]
-    )
-
-
-# --- CLI (main) ---
 
 runner = CliRunner()
 
 
-def test_cli_starts_new_editor_when_none_running(sockets_dir, tmp_path):
+# --- CLI: default mode (discover + attach, else detached) ---
+
+
+def test_default_no_session_runs_detached(sockets_dir, tmp_path):
     f = tmp_path / "file.txt"
     f.touch()
     with patch("zyn.editors.subprocess.run") as mock_run:
         result = runner.invoke(app, [str(f)])
     assert result.exit_code == 0
-    args = mock_run.call_args[0][0]
-    assert args[:2] == ["nvim", "--listen"]
+    mock_run.assert_called_once_with(["nvim", str(f)])
 
 
-def test_cli_opens_in_existing_editor(sockets_dir, tmp_path):
+def test_default_attaches_to_session_at_parent(sockets_dir, tmp_path):
     project = tmp_path / "project"
     project.mkdir()
     f = project / "file.txt"
     f.touch()
-    sock_path = Editor.socket_path_for(project)
-    s = make_unix_socket(sock_path)
+    sock_path = Editor.get_socket_for(project)
+    s = make_live_socket(sock_path)
     try:
         with patch("zyn.editors.subprocess.run") as mock_run:
             result = runner.invoke(app, [str(f)])
@@ -210,27 +63,296 @@ def test_cli_opens_in_existing_editor(sockets_dir, tmp_path):
         s.close()
 
 
-def test_cli_relative_path_matches_existing_editor(sockets_dir, tmp_path, monkeypatch):
+def test_default_walks_up_to_ancestor_session(sockets_dir, tmp_path):
     project = tmp_path / "project"
-    project.mkdir()
-    f = project / "file.txt"
+    sub = project / "deep" / "sub"
+    sub.mkdir(parents=True)
+    f = sub / "file.txt"
     f.touch()
-    monkeypatch.chdir(project)
-    sock_path = Editor.socket_path_for(project)
-    s = make_unix_socket(sock_path)
+    sock_path = Editor.get_socket_for(project)
+    s = make_live_socket(sock_path)
     try:
         with patch("zyn.editors.subprocess.run") as mock_run:
-            result = runner.invoke(app, ["file.txt"])
+            result = runner.invoke(app, [str(f)])
         assert result.exit_code == 0
-        args = mock_run.call_args[0][0]
-        assert args[:2] == ["nvim", "--server"]
+        mock_run.assert_called_once_with(
+            ["nvim", "--server", str(sock_path), "--remote", str(f)]
+        )
     finally:
         s.close()
 
 
-def test_cli_unknown_editor_exits_nonzero(tmp_path, monkeypatch):
+def test_default_stale_socket_falls_back_to_detached(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    sock_path = Editor.get_socket_for(project)
+    make_stale_socket(sock_path)
+    with patch("zyn.editors.subprocess.run") as mock_run:
+        result = runner.invoke(app, [str(f)])
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with(["nvim", str(f)])
+    assert not sock_path.exists()
+
+
+# --- CLI: --start ---
+
+
+def test_start_no_session_creates_session(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    sock_path = Editor.get_socket_for(project)
+    with patch("zyn.editors.subprocess.run") as mock_run:
+        result = runner.invoke(app, ["-s", str(f)])
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with(["nvim", "--listen", str(sock_path), str(f)])
+
+
+def test_start_with_directory_uses_dir_as_root(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    sock_path = Editor.get_socket_for(project)
+    with patch("zyn.editors.subprocess.run") as mock_run:
+        result = runner.invoke(app, ["-s", str(project)])
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with(["nvim", "--listen", str(sock_path), str(project)])
+
+
+def test_start_errors_when_live_session_exists(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    sock_path = Editor.get_socket_for(project)
+    s = make_live_socket(sock_path)
+    try:
+        result = runner.invoke(app, ["-s", str(f)])
+        assert result.exit_code != 0
+        assert "already exists" in result.output
+    finally:
+        s.close()
+
+
+def test_start_treats_stale_socket_as_no_session(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    sock_path = Editor.get_socket_for(project)
+    make_stale_socket(sock_path)
+    with patch("zyn.editors.subprocess.run") as mock_run:
+        result = runner.invoke(app, ["-s", str(f)])
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with(["nvim", "--listen", str(sock_path), str(f)])
+
+
+# --- CLI: --detached ---
+
+
+def test_detached_ignores_existing_session(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    s = make_live_socket(Editor.get_socket_for(project))
+    try:
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, ["-d", str(f)])
+        assert result.exit_code == 0
+        mock_run.assert_called_once_with(["nvim", str(f)])
+    finally:
+        s.close()
+
+
+# --- CLI: --workspace ---
+
+
+def test_workspace_attaches_at_exact_root(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f = tmp_path / "elsewhere.txt"
+    f.touch()
+    sock_path = Editor.get_socket_for(project)
+    s = make_live_socket(sock_path)
+    try:
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, ["-w", str(project), str(f)])
+        assert result.exit_code == 0
+        mock_run.assert_called_once_with(
+            ["nvim", "--server", str(sock_path), "--remote", str(f)]
+        )
+    finally:
+        s.close()
+
+
+def test_workspace_does_not_walk_up(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    sub = project / "sub"
+    sub.mkdir(parents=True)
+    f = sub / "file.txt"
+    f.touch()
+    s = make_live_socket(Editor.get_socket_for(project))
+    try:
+        with patch("zyn.editors.subprocess.run") as mock_run:
+            result = runner.invoke(app, ["-w", str(sub), str(f)])
+        assert result.exit_code == 0
+        mock_run.assert_called_once_with(["nvim", str(f)])
+    finally:
+        s.close()
+
+
+def test_workspace_with_start_uses_workspace_as_root(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    deep = project / "deep"
+    deep.mkdir(parents=True)
+    f = deep / "file.txt"
+    f.touch()
+    sock_path = Editor.get_socket_for(project)
+    with patch("zyn.editors.subprocess.run") as mock_run:
+        result = runner.invoke(app, ["-w", str(project), "-s", str(f)])
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with(["nvim", "--listen", str(sock_path), str(f)])
+
+
+# --- CLI: error cases ---
+
+
+def test_start_and_detached_are_mutex(sockets_dir, tmp_path):
+    f = tmp_path / "file.txt"
+    f.touch()
+    result = runner.invoke(app, ["-s", "-d", str(f)])
+    assert result.exit_code != 0
+    assert "mutually exclusive" in result.output
+
+
+def test_invalid_editor_name_errors(sockets_dir, tmp_path, monkeypatch):
     monkeypatch.setenv("ZYN_EDITOR", "emacs")
     f = tmp_path / "file.txt"
     f.touch()
     result = runner.invoke(app, [str(f)])
     assert result.exit_code != 0
+
+
+# --- Editor.discover ---
+
+
+def test_discover_returns_none_when_no_session(sockets_dir, tmp_path):
+    f = tmp_path / "file.txt"
+    f.touch()
+    assert Editor.discover(f) is None
+
+
+def test_discover_finds_session_at_exact_dir(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    f = project / "file.txt"
+    f.touch()
+    sock_path = Editor.get_socket_for(project)
+    s = make_live_socket(sock_path)
+    try:
+        result = Editor.discover(f)
+        assert result is not None
+        assert result.root == project
+        assert result.session_socket == sock_path
+    finally:
+        s.close()
+
+
+def test_discover_walks_up_to_ancestor(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    sub = project / "deep" / "sub"
+    sub.mkdir(parents=True)
+    f = sub / "file.txt"
+    f.touch()
+    s = make_live_socket(Editor.get_socket_for(project))
+    try:
+        result = Editor.discover(f)
+        assert result is not None
+        assert result.root == project
+    finally:
+        s.close()
+
+
+def test_discover_ignores_unrelated_sibling_session(sockets_dir, tmp_path):
+    a = tmp_path / "a"
+    b = tmp_path / "b"
+    a.mkdir()
+    b.mkdir()
+    f = b / "file.txt"
+    f.touch()
+    s = make_live_socket(Editor.get_socket_for(a))
+    try:
+        assert Editor.discover(f) is None
+    finally:
+        s.close()
+
+
+# --- Editor.has_live_session ---
+
+
+def test_has_live_session_true_when_listener_present(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    s = make_live_socket(Editor.get_socket_for(project))
+    try:
+        assert Editor.has_live_session(project) is True
+    finally:
+        s.close()
+
+
+def test_has_live_session_false_and_unlinks_when_stale(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    sock_path = Editor.get_socket_for(project)
+    make_stale_socket(sock_path)
+    assert sock_path.exists()
+    assert Editor.has_live_session(project) is False
+    assert not sock_path.exists()
+
+
+def test_has_live_session_false_when_missing(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    assert Editor.has_live_session(project) is False
+
+
+# --- Editor cleanup semantics ---
+
+
+def test_create_session_unlinks_socket_on_exit(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    sock_path = Editor.get_socket_for(project)
+    sock_path.touch()
+    with Neovim.create_session(project):
+        assert sock_path.exists()
+    assert not sock_path.exists()
+
+
+def test_create_session_unlinks_socket_on_exception(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    sock_path = Editor.get_socket_for(project)
+    sock_path.touch()
+    with pytest.raises(RuntimeError):
+        with Neovim.create_session(project):
+            raise RuntimeError("boom")
+    assert not sock_path.exists()
+
+
+def test_attached_editor_does_not_unlink_socket(sockets_dir, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    sock_path = Editor.get_socket_for(project)
+    s = make_live_socket(sock_path)
+    try:
+        editor = Neovim.attach(project)
+        assert editor is not None
+        with editor:
+            pass
+        assert sock_path.exists()
+    finally:
+        s.close()
