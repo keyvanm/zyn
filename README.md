@@ -135,7 +135,12 @@ Prefer to integrate manually? Each bundle in `bundles/<name>/` is a stow package
 
 ## Coming from VS Code or Cursor?
 
-This is the stack to build toward. Install nvim and zellij first; then `just fresh-install-all` to install zyn, zyn.nvim, and all three bundles in one shot. The first day you click a Claude Code path and watch it land in the right pane, you'll wonder why no one built this sooner.
+This is the stack to build toward. Install nvim, set `$EDITOR=zyn`, then pick your tiling:
+
+- **macOS or a stacking WM**: install zellij and run `just fresh-install-all` — you get yazi + nvim + terminal in one `--layout zyn` window.
+- **Hyprland or sway**: skip zellij — your WM already tiles. Run `just fresh-install gatzi` (yazi/lazygit wiring) and `just fresh-install gigazyn` (nvim plugin pack). Set `ZYN_SCOPE=mux,wm` to scope sessions per workspace.
+
+The first day you click a Claude Code path and watch it land in the right place, you'll wonder why no one built this sooner.
 
 ## What's next
 
