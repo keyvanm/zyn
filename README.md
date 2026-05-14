@@ -2,7 +2,7 @@
 
 **The missing session protocol for your terminal editor**
 
-One editor per project. Every tool routes through zyn.
+Open files in one shared terminal editor per project, scoped by multiplexer pane or WM workspace.
 
 Yazi on the left, Claude Code on the right, nvim already open. You press Enter on a file in yazi and a new nvim takes over the pane. You click `src/auth.rs:42` in Claude Code's output and another one spawns somewhere else. The nvim you already had open is sitting there awkwardly.
 
