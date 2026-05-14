@@ -50,15 +50,13 @@ By default, one repo means one editor — even across workspaces. Drop a termina
 - ESLint warns about `app/page.tsx:14:7` in your dev server output → same nvim, same session.
 - Press `e` on a file in lazygit → opens in your nvim, ready to edit.
 
-One editor. Always.
-
 ## The missing layer
 
 How many editor instances do you have open right now? When was the last time you closed a duplicate nvim because some tool spawned it for you?
 
 Every modern IDE has session management baked in. VS Code, Cursor, Zed — all of them know which window owns which workspace, and route file-opens accordingly. The terminal ecosystem doesn't. Each tool — Claude Code, yazi, lazygit, every grep result, every clickable path — invokes `$EDITOR` independently and spawns its own. None know about the editor already running next door.
 
-zyn is the missing layer. **Not a wrapper. Not a multiplexer. Not an IDE.** A small Python primitive that lets the tools you already use cooperate.
+zyn is a small Python primitive that lets the tools you already use cooperate. It isn't a wrapper, a multiplexer, or an IDE — it sits underneath them, as the one `$EDITOR` that knows where your editor actually lives.
 
 > _(Tried yazelix? It depends on Nix and locks you into Zellij. zyn is a single Python tool that works with whatever stack you already have.)_
 
@@ -82,7 +80,7 @@ cd ~/projects/myrepo
 zyn --start
 ```
 
-You're done. From anywhere in this repo, `zyn src/app.py:42` opens that file in your nvim session, at line 42.
+From anywhere in this repo, `zyn src/app.py:42` opens that file in your nvim session, at line 42.
 
 ```sh
 zyn src/app.py:42:5         # open at line 42, column 5
@@ -138,8 +136,6 @@ This is the stack to build toward. Install nvim, set `$EDITOR=zyn`, then pick yo
 
 - **Without a tiling WM**: install zellij and run `just fresh-install-all` — you get yazi + nvim + terminal in one `--layout zyn` window.
 - **Hyprland or sway**: skip zellij — your WM already tiles. Run `just fresh-install gatzi` (yazi/lazygit wiring) and `just fresh-install gigazyn` (nvim plugin pack). One editor per repo follows you across every workspace.
-
-The first day you click a Claude Code path and watch it land in the right place, you'll wonder why no one built this sooner.
 
 ## What's next
 
