@@ -14,26 +14,26 @@ install BUNDLE:
 uninstall BUNDLE:
     stow {{stow_flags}} -D {{BUNDLE}}
 
-# Snapshot the bundle's install footprint into a timestamped tarball.
+# Snapshot all ~/.config dirs the bundle touches into a timestamped tarball.
 backup BUNDLE:
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p {{backups_dir}}
-    cd bundles/{{BUNDLE}}
-    existing=""
-    while IFS= read -r p; do
-        if [ -e "{{config_dir}}/$p" ] || [ -L "{{config_dir}}/$p" ]; then
-            existing+="$p"$'\n'
+    dirs=""
+    for d in bundles/{{BUNDLE}}/*/; do
+        name=$(basename "$d")
+        if [ -d "{{config_dir}}/$name" ]; then
+            dirs+="$name"$'\n'
         fi
-    done < <(find . -type f -not -name deps.txt | sed 's|^\./||')
-    if [ -z "$existing" ]; then
+    done
+    if [ -z "$dirs" ]; then
         echo "{{BUNDLE}}: nothing at install footprint, skipping"
         exit 0
     fi
     ts=$(date +%Y%m%d-%H%M%S)
     archive="{{backups_dir}}/{{BUNDLE}}-$ts.tar.gz"
-    printf '%s' "$existing" | tar -czf "$archive" -C "{{config_dir}}" -T -
-    echo "{{BUNDLE}}: backed up to bundles/.backups/{{BUNDLE}}-$ts.tar.gz"
+    printf '%s' "$dirs" | tar -czf "$archive" -C "{{config_dir}}" -T -
+    echo "{{BUNDLE}}: backed up to $archive"
 
 # Wipe the bundle's entire install footprint from ~/.config. Destructive.
 clean BUNDLE:
