@@ -10,6 +10,9 @@ Made primarily for terminal editors, with GUI editor support on the roadmap.
 
 ## Install
 
+> [!NOTE]
+> Want a fresh install of everything, including the bundles? Go to [Bundles](#bundles).
+
 ### 0. Get uv
 
 [uv](https://docs.astral.sh/uv/) manages zyn and its Python runtime.
