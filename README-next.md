@@ -14,4 +14,4 @@ You end up navigating back to the right editor more often than reading the file.
 
 Zyn fixes this by being the one `$EDITOR` that knows where your editor actually lives.
 
-Another tool that solves a similar problem is yazelix, but it requires Nix and locks you into zellij. Zyn is a single Python tool that works inside any multiplexer, or none. We also support Hyprland workspaces.
+Unlike competitors like Yazelix, Zyn is a single Python tool that works inside any multiplexer, or none; and extends to Hyprland and sway workspaces.
