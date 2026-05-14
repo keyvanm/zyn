@@ -90,7 +90,7 @@ Today there's one backend: nvim. Kakoune and Helix are next. The session model a
 
 ## Install
 
-Required: **nvim**, **uv** (we'll install it in step 1).
+Required: a supported editor (today: **nvim**), **uv** (we'll install it in step 1).
 Optional: a multiplexer (zellij or tmux).
 
 ```sh
@@ -120,9 +120,11 @@ zyn -w ~/other file.py      # attach to a session at a specific root
 
 zyn understands the `path:line:col` convention emitted by Claude Code, ripgrep, grep, ESLint, gcc, and most clickable-path terminal integrations. For the full surface, run `zyn --help`.
 
-## Companion plugin: zyn.nvim
+## The nvim companion: zyn.nvim
 
-[`zyn.nvim`](https://github.com/keyvanm/zyn.nvim) is what makes the routing visible. zyn delivers the file to the right nvim; zyn.nvim's hook focuses that pane or window so you actually _see_ it. For multiplexer users it's a polish layer: the calling pane stays focused otherwise, one extra keypress away. For Hyprland and sway users on default scoping, it's load-bearing: one editor session covers every workspace, so a click in workspace 10 has to bring you to the nvim on workspace 1, and the hook is what does that.
+Each backend may have its own companion plugin that closes the loop on the editor side. For the nvim backend, that's [`zyn.nvim`](https://github.com/keyvanm/zyn.nvim).
+
+zyn delivers the file to the right nvim; zyn.nvim's hook focuses that pane or window so you actually _see_ it. For multiplexer users it's a polish layer: the calling pane stays focused otherwise, one extra keypress away. For Hyprland and sway users on default scoping, it's load-bearing: one editor session covers every workspace, so a click in workspace 10 has to bring you to the nvim on workspace 1, and the hook is what does that.
 
 ```lua
 -- in ~/.config/nvim/init.lua or any file under ~/.config/nvim/plugin/
