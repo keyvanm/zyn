@@ -5,10 +5,21 @@ stow_flags := "--no-folding --ignore=deps\\.txt -t " + config_dir + " -d bundles
 default:
     @just --list
 
-# Symlink the bundle into ~/.config via stow.
+# Symlink the bundle into ~/.config via stow, then run its post-install hook if present.
 install BUNDLE:
     @mkdir -p {{config_dir}}
     stow {{stow_flags}} {{BUNDLE}}
+    @just post-install {{BUNDLE}}
+
+# Run the bundle's post-install.sh hook if present and executable.
+post-install BUNDLE:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    hook="bundles/{{BUNDLE}}/post-install.sh"
+    if [ -x "$hook" ]; then
+        echo "{{BUNDLE}}: running post-install hook"
+        "$hook"
+    fi
 
 # Remove the symlinks stow owns. Leaves any pre-existing user files alone.
 uninstall BUNDLE:

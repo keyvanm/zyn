@@ -125,7 +125,7 @@ Prefer to integrate manually? Each bundle in `bundles/<name>/` is a stow package
 
 | Bundle      | What it does                                                                                                                                                                  | Upstream deps      |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| **gatzi**   | yazi + lazygit wiring; yazi git-status indicator; `gi` keybind to launch lazygit from yazi                                                                                    | yazi, lazygit, git |
+| **gatzi**   | yazi + lazygit wiring; yazi git-status indicator; `gi` keybind to launch lazygit from yazi. Post-install runs `ya pkg install` to fetch the yazi plugins it depends on.       | yazi, lazygit, git |
 | **zennij**  | Two zellij layouts: `zyn` (desktop), `zynm` (mobile/stacked)                                                                                                                  | zellij             |
 | **gigazyn** | nvim pack manifest loading [`giga.nvim`](https://github.com/keyvanm/giga.nvim) and [`zyn.nvim`](https://github.com/keyvanm/zyn.nvim). Replaces a standalone zyn.nvim install. | neovim             |
 
