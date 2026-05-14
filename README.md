@@ -39,6 +39,16 @@ Launch zellij with `--layout zyn`. Yazi browses your repo on the left with git s
 
 ### Wired with Hyprland or sway
 
+```
+── workspace 1 ──────────────────────    ── workspace 10 ──────
+
+┌────────────┐  ┌──────────────────┐     ┌──────────────────┐
+│   yazi     │  │       nvim       │     │     terminal     │
+│ (explorer) │  │     (editor)     │     │  (Claude Code)   │
+│            │  │                  │     │                  │
+└────────────┘  └──────────────────┘     └──────────────────┘
+```
+
 Skip the multiplexer: your WM is the multiplexer. Run yazi, nvim, and a Claude Code terminal in three tiled windows; zyn finds the right session regardless of which window the call comes from.
 
 By default, one repo means one editor, even across workspaces. Drop a terminal on workspace 10, click `src/auth.rs:42`, and the [`zyn.nvim`](#companion-plugin-zynnvim) hook focuses you back to workspace 1 where your nvim lives. Want isolation instead? Set `ZYN_SCOPE=mux,wm` and the same repo opened in two workspaces gets two independent editors: one per workspace, no cross-talk.
@@ -56,7 +66,7 @@ How many editor instances do you have open right now? When was the last time you
 
 Every modern IDE has session management baked in. VS Code, Cursor, Zed, all of them know which window owns which workspace, and route file-opens accordingly. The terminal ecosystem doesn't. Each tool, Claude Code, yazi, lazygit, every grep result, every clickable path, invokes `$EDITOR` independently and spawns its own. None know about the editor already running next door.
 
-zyn is the coordination layer that was missing. One `$EDITOR` every tool calls. One session per project. About 550 lines of Python.
+zyn is the coordination layer that was missing. One `$EDITOR` every tool calls. One session per project. About 550 lines of Python, one direct dependency (`typer`).
 
 ## What zyn replaces
 
