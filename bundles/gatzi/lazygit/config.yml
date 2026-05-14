@@ -1,0 +1,4 @@
+os:
+  edit: zyn {{filename}}
+  editAtLine: zyn {{filename}}:{{line}}
+  editInTerminal: false
