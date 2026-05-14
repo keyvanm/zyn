@@ -10,13 +10,28 @@ Python 3.14+, single dependency `typer`. Tests with `pytest`. See `README.md` fo
 
 ## Commands
 
-Use `uv` for everything:
+Use `uv` for everything Python:
 
 ```sh
-uv sync                              # install deps + dev deps
-uv run pytest                        # run the full suite
-uv run pytest tests/test_zyn.py::test_name   # single test
-uv run zyn ...                       # invoke the CLI from the source tree
+uv sync                                        # install deps + dev deps
+uv run pytest                                  # run the full suite
+uv run pytest tests/test_zyn.py::test_name     # single test
+uv run zyn ...                                 # invoke the CLI from the source tree
+```
+
+Bundle installation is managed via `just` (requires `stow`):
+
+```sh
+just                          # list all recipes
+just install-cli              # install zyn CLI from GitHub via uv tool
+just install-cli-dev          # install from local source (editable)
+just fresh-install gatzi      # backup → clear → install a bundle
+just fresh-install-all        # same for all bundles + CLI
+just backup gatzi             # snapshot ~/.config dirs the bundle touches
+just clear gatzi              # wipe those dirs (backs up first by default)
+just clear gatzi true         # wipe without backup
+just uninstall gatzi          # remove only the symlinks stow owns
+just brew gatzi               # install bundle's upstream deps via brew
 ```
 
 ## Architecture
@@ -50,6 +65,18 @@ Two `zyn --start` invocations at the same `(root, scope)` must not both spawn ed
 ### Target parsing
 
 `Target.parse()` uses `rsplit` so a path that literally contains colons is preserved unless the trailing 1–2 segments are all-digits (matches helix/sublime convention). Multi-file open puts the cursor on the *last* target only.
+
+## Bundles
+
+`bundles/` contains curated config sets that wire sibling terminal tools to route through `zyn`. Each bundle is a stow package — its directory tree mirrors `~/.config/`, so `just install <bundle>` symlinks leaf files into place with `stow --no-folding`.
+
+- `gatzi/` — yazi + lazygit. Both point their edit action at `zyn`. Also includes a yazi git-status plugin and a `gi` keybind to launch lazygit from yazi.
+- `zennij/` — zellij layouts (`zellij/layouts/zyn.kdl` desktop, `zynm.kdl` mobile/stacked) that spawn `yazi` + `zyn -s` in paired panes.
+- `gigazyn/` — nvim pack manifest (`nvim/plugin/gigazyn.lua`) that loads `giga.nvim` + `zyn.nvim` via `vim.pack.add`. Auto-loaded by nvim from `plugin/`; no `require` needed.
+
+Each bundle has a `deps.txt` (one brew package per line) consumed by `just brew <bundle>`. Backups land in `$XDG_DATA_HOME/zyn/backups/` (default `~/.local/share/zyn/backups/`).
+
+To add a new bundle: create `bundles/<name>/` mirroring the `~/.config/` subtree it targets, add `deps.txt`, and add it to the `*-all` aggregates in the Justfile.
 
 ## Workspace context
 
