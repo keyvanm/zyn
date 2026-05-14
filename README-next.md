@@ -2,7 +2,7 @@
 
 > **Click a file path anywhere in your terminal — it lands in your editor, at the right line, every time.**
 
-Zyn sits between your terminal and your editor. Every tool that opens a file opens it in the same editor window per workspace, at the right cursor position.
+Zyn sits between your terminal and your editor. Every tool that opens a file opens it in the same editor instance per workspace, at the right cursor position.
 
 ## The Problem
 
@@ -14,4 +14,4 @@ You end up navigating back to the right editor more often than reading the file.
 
 Zyn fixes this by being the one `$EDITOR` that knows where your editor actually lives.
 
-Unlike competitors like Yazelix, Zyn is a single Python tool that works inside any multiplexer, or none; and extends to Hyprland and sway workspaces.
+Unlike yazelix, which depends on Nix and locks you into Zellij, Zyn is a single Python tool that works inside any multiplexer — or none — and extends to Hyprland and sway workspaces.
