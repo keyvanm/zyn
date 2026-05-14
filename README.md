@@ -2,7 +2,7 @@
 
 **The missing session layer for your terminal editor**
 
-Get one editor per project. Every tool routes to it.
+One editor per project. Every tool routes through zyn.
 
 Yazi on the left, Claude Code on the right, nvim already open. You press Enter on a file in yazi and a new nvim takes over the pane. You click `src/auth.rs:42` in Claude Code's output and another one spawns somewhere else. The nvim you already had open is sitting there awkwardly.
 
@@ -56,9 +56,9 @@ How many editor instances do you have open right now? When was the last time you
 
 Every modern IDE has session management baked in. VS Code, Cursor, Zed, all of them know which window owns which workspace, and route file-opens accordingly. The terminal ecosystem doesn't. Each tool, Claude Code, yazi, lazygit, every grep result, every clickable path, invokes `$EDITOR` independently and spawns its own. None know about the editor already running next door.
 
-zyn is a small Python primitive that lets the tools you already use cooperate. It isn't a wrapper, a multiplexer, or an IDE. It sits underneath them, as the one `$EDITOR` that knows where your editor actually lives.
+zyn is the coordination layer that was missing. One `$EDITOR` every tool calls. One session per project. About 550 lines of Python.
 
-## How zyn compares
+## What zyn replaces
 
 | Approach                                          | What it does                                                | Where zyn differs                                                                                                  |
 | ------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
