@@ -1,6 +1,6 @@
 # Zyn
 
-**The missing session layer for your terminal editor**
+**The missing session protocol for your terminal editor**
 
 One editor per project. Every tool routes through zyn.
 
@@ -66,7 +66,7 @@ How many editor instances do you have open right now? When was the last time you
 
 Every modern IDE has session management baked in. VS Code, Cursor, Zed, all of them know which window owns which workspace, and route file-opens accordingly. The terminal ecosystem doesn't. Each tool, Claude Code, yazi, lazygit, every grep result, every clickable path, invokes `$EDITOR` independently and spawns its own. None know about the editor already running next door.
 
-zyn is the coordination layer that was missing. One `$EDITOR` every tool calls. One session per project. About 550 lines of Python, one direct dependency (`typer`).
+zyn is the coordination layer that was missing. One `$EDITOR` every tool calls. One session per project. About 550 lines of Python, one direct dependency (`typer`). The first implementation routes to nvim.
 
 ## What zyn replaces
 
@@ -77,6 +77,16 @@ zyn is the coordination layer that was missing. One `$EDITOR` every tool calls. 
 | Hand-rolled `tmux send-keys` / zellij glue        | Wire one specific tool into one specific pane with a script | zyn is multiplexer-agnostic (works without one), covers every `$EDITOR` caller at once, and survives crashed nvims |
 | [yazelix](https://github.com/luccahuguet/yazelix) | All-in-one Nix flake bundling yazi + zellij + helix/nvim    | One Python tool, no Nix; bring your own stack; works on Hyprland, sway, tmux, or none of the above                 |
 | VS Code / Cursor terminal integration             | IDE owns the terminal; clickable paths route to the IDE     | Inverted: the terminal is primary, your editor (nvim) is the recipient, and zyn is the routing layer between them  |
+
+## The protocol
+
+zyn defines two things.
+
+**A session** is keyed by the project root, plus an optional scope: the active multiplexer pane (zellij, tmux), the active WM workspace (Hyprland, sway), or both. The default keys on project root only, so one repo means one session everywhere you call into it from.
+
+**An editor backend** is any editor that exposes remote commands over a Unix socket. nvim does (`--server` / `--remote-send`). Kakoune already supports it. Helix will, once its socket work lands. A backend lives behind the `Editor` ABC in `editors.py`.
+
+Today there's one backend: nvim. Kakoune and Helix are next. The session model and routing are editor-agnostic; only the wire format (how you tell the editor to open a file at a line) is editor-specific.
 
 ## Install
 
