@@ -58,7 +58,15 @@ Every modern IDE has session management baked in. VS Code, Cursor, Zed — all o
 
 zyn is a small Python primitive that lets the tools you already use cooperate. It isn't a wrapper, a multiplexer, or an IDE — it sits underneath them, as the one `$EDITOR` that knows where your editor actually lives.
 
-> _(Tried yazelix? It depends on Nix and locks you into Zellij. zyn is a single Python tool that works with whatever stack you already have.)_
+## How zyn compares
+
+| Approach                                          | What it does                                                | Where zyn differs                                                                                                  |
+| ------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Naive `$EDITOR=nvim`                              | Every tool spawns its own nvim                              | zyn keeps one session per project; every tool routes into it instead of spawning                                   |
+| nvim `--server` / `--remote-send`                 | Send commands to a known nvim socket                        | zyn discovers the socket for you, scopes by multiplexer/WM, and handles concurrent `--start` races                 |
+| Hand-rolled `tmux send-keys` / zellij glue        | Wire one specific tool into one specific pane with a script | zyn is multiplexer-agnostic (works without one), covers every `$EDITOR` caller at once, and survives crashed nvims |
+| [yazelix](https://github.com/luccahuguet/yazelix) | All-in-one Nix flake bundling yazi + zellij + helix/nvim    | One Python tool, no Nix; bring your own stack; works on Hyprland, sway, tmux, or none of the above                 |
+| VS Code / Cursor terminal integration             | IDE owns the terminal; clickable paths route to the IDE     | Inverted: the terminal is primary, your editor (nvim) is the recipient — zyn is the routing layer between them     |
 
 ## Install
 
