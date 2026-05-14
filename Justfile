@@ -1,31 +1,74 @@
-backup BUNDLE:
-backup_zyn:
-backup_yazi:
-backup_zellij:
-backup_lazygit:
-backup_hyprland:
-backup_all:
+config_dir := env_var("HOME") / ".config"
+backups_dir := justfile_directory() / "bundles" / ".backups"
+stow_flags := "--no-folding --ignore=deps\\.txt -t " + config_dir + " -d bundles"
 
-clean BUNDLE:
-clean_zyn:
-clean_yazi:
-clean_zellij:
-clean_lazygit:
-clean_hyprland:
-clean_all:
+default:
+    @just --list
 
-brew BUNDLE:
-brew_zyn:
-brew_yazi:
-brew_zellij:
-brew_lazygit:
-brew_hyprland:
-brew_all:
-
+# Symlink the bundle into ~/.config via stow.
 install BUNDLE:
-install_zyn:
-install_yazi:
-install_zellij:
-install_lazygit:
-install_hyprland:
-install_all:
+    @mkdir -p {{config_dir}}
+    stow {{stow_flags}} {{BUNDLE}}
+
+# Remove the symlinks stow owns. Leaves any pre-existing user files alone.
+uninstall BUNDLE:
+    stow {{stow_flags}} -D {{BUNDLE}}
+
+# Snapshot the bundle's install footprint into a timestamped tarball.
+backup BUNDLE:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p {{backups_dir}}
+    cd bundles/{{BUNDLE}}
+    existing=""
+    while IFS= read -r p; do
+        if [ -e "{{config_dir}}/$p" ] || [ -L "{{config_dir}}/$p" ]; then
+            existing+="$p"$'\n'
+        fi
+    done < <(find . -type f -not -name deps.txt | sed 's|^\./||')
+    if [ -z "$existing" ]; then
+        echo "{{BUNDLE}}: nothing at install footprint, skipping"
+        exit 0
+    fi
+    ts=$(date +%Y%m%d-%H%M%S)
+    archive="{{backups_dir}}/{{BUNDLE}}-$ts.tar.gz"
+    printf '%s' "$existing" | tar -czf "$archive" -C "{{config_dir}}" -T -
+    echo "{{BUNDLE}}: backed up to bundles/.backups/{{BUNDLE}}-$ts.tar.gz"
+
+# Wipe the bundle's entire install footprint from ~/.config. Destructive.
+clean BUNDLE:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd bundles/{{BUNDLE}}
+    while IFS= read -r p; do
+        target="{{config_dir}}/$p"
+        if [ -e "$target" ] || [ -L "$target" ]; then
+            rm -f "$target"
+        fi
+    done < <(find . -type f -not -name deps.txt | sed 's|^\./||')
+
+# Install upstream tools listed in the bundle's deps.txt via brew.
+brew BUNDLE:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    deps="bundles/{{BUNDLE}}/deps.txt"
+    if [ ! -f "$deps" ]; then
+        echo "{{BUNDLE}}: no deps.txt, skipping"
+        exit 0
+    fi
+    pkgs=$(grep -vE '^(#|$)' "$deps" | tr '\n' ' ')
+    if [ -z "$pkgs" ]; then
+        echo "{{BUNDLE}}: deps.txt is empty, skipping"
+        exit 0
+    fi
+    brew install $pkgs
+
+install_all: (install "gatzi") (install "zennij") (install "gigazyn")
+
+uninstall_all: (uninstall "gatzi") (uninstall "zennij") (uninstall "gigazyn")
+
+backup_all: (backup "gatzi") (backup "zennij") (backup "gigazyn")
+
+clean_all: (clean "gatzi") (clean "zennij") (clean "gigazyn")
+
+brew_all: (brew "gatzi") (brew "zennij") (brew "gigazyn")
