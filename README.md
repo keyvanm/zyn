@@ -12,16 +12,9 @@ Made primarily for terminal editors, with GUI editor support on the roadmap.
 
 ### 1. Get uv
 
-uv manages zyn and its Python runtime.
+[uv](https://docs.astral.sh/uv/) manages zyn and its Python runtime.
 
 ```sh
-# brew (macOS)
-brew install uv
-
-# pacman (Arch)
-sudo pacman -S uv
-
-# anywhere
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
