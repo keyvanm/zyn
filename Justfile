@@ -35,10 +35,13 @@ backup BUNDLE:
     printf '%s' "$dirs" | tar -czf "$archive" -C "{{config_dir}}" -T -
     echo "{{BUNDLE}}: backed up to $archive"
 
-# Wipe all ~/.config dirs the bundle touches. Destructive.
-clear BUNDLE:
+# Wipe all ~/.config dirs the bundle touches. Backs up first unless no-backup=true.
+clear BUNDLE no-backup="false":
     #!/usr/bin/env bash
     set -euo pipefail
+    if [ "{{no-backup}}" != "true" ]; then
+        just backup {{BUNDLE}}
+    fi
     for d in bundles/{{BUNDLE}}/*/; do
         name=$(basename "$d")
         target="{{config_dir}}/$name"
