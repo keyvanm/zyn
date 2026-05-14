@@ -41,7 +41,7 @@ Launch zellij with `--layout zyn` — yazi browses your repo on the left with gi
 
 Skip the multiplexer — your WM is the multiplexer. Run yazi, nvim, and a Claude Code terminal in three tiled windows; zyn finds the right session regardless of which window the call comes from.
 
-Set `ZYN_SCOPE=mux,wm` and the same repo opened in two workspaces gets two independent editors — one per workspace, no cross-talk. The [`zyn.nvim`](#companion-plugin-zynnvim) hook focuses the correct window when a file routes from another workspace, so a click in workspace 2 brings you to the nvim that owns it.
+By default, one repo means one editor — even across workspaces. Drop a terminal on workspace 10, click `src/auth.rs:42`, and the [`zyn.nvim`](#companion-plugin-zynnvim) hook focuses you back to workspace 1 where your nvim lives. Want isolation instead? Set `ZYN_SCOPE=mux,wm` and the same repo opened in two workspaces gets two independent editors — one per workspace, no cross-talk.
 
 ### Either way
 
@@ -97,7 +97,7 @@ zyn understands the `path:line:col` convention emitted by Claude Code, ripgrep, 
 
 ## Companion plugin: zyn.nvim
 
-[`zyn.nvim`](https://github.com/keyvanm/zyn.nvim) completes the experience. When zyn routes a file to a session in another pane (or another Hyprland workspace), zyn.nvim's hook focuses that pane — so you actually _see_ the file. Without it, the file still routes; you just stay in the calling pane.
+[`zyn.nvim`](https://github.com/keyvanm/zyn.nvim) is what makes the routing visible. zyn delivers the file to the right nvim; zyn.nvim's hook focuses that pane or window so you actually _see_ it. For multiplexer users it's a polish layer — the calling pane stays focused otherwise, one extra keypress away. For Hyprland and sway users on default scoping, it's load-bearing: one editor session covers every workspace, so a click in workspace 10 has to bring you to the nvim on workspace 1, and the hook is what does that.
 
 ```lua
 -- in any file under ~/.config/nvim/plugin/
@@ -138,7 +138,7 @@ Prefer to integrate manually? Each bundle in `bundles/<name>/` is a stow package
 This is the stack to build toward. Install nvim, set `$EDITOR=zyn`, then pick your tiling:
 
 - **macOS or a stacking WM**: install zellij and run `just fresh-install-all` — you get yazi + nvim + terminal in one `--layout zyn` window.
-- **Hyprland or sway**: skip zellij — your WM already tiles. Run `just fresh-install gatzi` (yazi/lazygit wiring) and `just fresh-install gigazyn` (nvim plugin pack). Set `ZYN_SCOPE=mux,wm` to scope sessions per workspace.
+- **Hyprland or sway**: skip zellij — your WM already tiles. Run `just fresh-install gatzi` (yazi/lazygit wiring) and `just fresh-install gigazyn` (nvim plugin pack). One editor per repo follows you across every workspace.
 
 The first day you click a Claude Code path and watch it land in the right place, you'll wonder why no one built this sooner.
 
@@ -150,6 +150,6 @@ If zyn saves you a context switch today:
 - 🐛 **[Open an issue](https://github.com/keyvanm/zyn/issues)** for helix, VS Code, or anything broken
 - 💬 **Tell us how you use it** — we're still figuring out who else needs this
 
-**Today**: nvim sessions with zellij/tmux scoping, Hyprland and sway focus, `path:line:col` parsing, multi-file open, race-safe sibling-pane handoff.
+**Today**: nvim sessions with optional scoping (multiplexer pane, WM workspace, or both), cross-workspace focus via zyn.nvim on Hyprland/sway, `path:line:col` parsing, multi-file open, race-safe sibling-pane handoff.
 
-**Roadmap**: VSCode/Codium/Helix support, tmux config bundle, hyprland bundle, publish to PyPI.
+**Roadmap**: VSCode/Codium/Helix support, tmux config bundle, hyprland bundle (prebuilt window rules + keybinds), publish to PyPI.
