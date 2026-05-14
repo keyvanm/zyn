@@ -48,7 +48,7 @@ Set `ZYN_SCOPE=mux,wm` and the same repo opened in two workspaces gets two indep
 - Run `rg TODO` in the terminal, click any hit → nvim opens at the match.
 - `cargo test` fails at `src/handler.rs:99` → click the path, nvim jumps there.
 - ESLint warns about `app/page.tsx:14:7` in your dev server output → same nvim, same session.
-- Hit `gi` in yazi to launch lazygit, stage files, exit → your nvim is exactly where you left it.
+- Lazygit, staging files, want to quickly see this file? Press `e` → lands in your nvim
 
 One editor. Always.
 
