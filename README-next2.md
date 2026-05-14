@@ -121,13 +121,15 @@ just fresh-install-all                  # all bundles + zyn CLI
 > [!NOTE]
 > Fresh-install backs up the `~/.config/` directories the bundle touches to `~/.local/share/zyn/backups/` before replacing them. Originals are recoverable.
 
+Each bundle has a `deps.txt` listing the system packages it depends on. Install them with `just brew <bundle>` (macOS) or your package manager of choice.
+
 Prefer to integrate manually? Each bundle in `bundles/<name>/` is a stow package — cherry-pick files into your existing config, or run `stow` yourself.
 
 | Bundle      | What it does                                                                                                                                                                  | Upstream deps      |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
 | **gatzi**   | yazi + lazygit wiring; yazi git-status indicator; `gi` keybind to launch lazygit from yazi. Post-install runs `ya pkg install` to fetch the yazi plugins it depends on.       | yazi, lazygit, git |
 | **zennij**  | Two zellij layouts: `zyn` (desktop), `zynm` (mobile/stacked)                                                                                                                  | zellij             |
-| **gigazyn** | nvim pack manifest loading [`giga.nvim`](https://github.com/keyvanm/giga.nvim) and [`zyn.nvim`](https://github.com/keyvanm/zyn.nvim). Replaces a standalone zyn.nvim install. | neovim             |
+| **gigazyn** | nvim pack manifest loading [`giga.nvim`](https://github.com/keyvanm/giga.nvim) and [`zyn.nvim`](https://github.com/keyvanm/zyn.nvim). Replaces a standalone zyn.nvim install. giga.nvim's language pack expects formatters and LSPs (ruff, ty, marksman, stylua, etc.) — see giga.nvim's [Requirements](https://github.com/keyvanm/giga.nvim#requirements) for the full list. | neovim, tree-sitter |
 
 ## Coming from VS Code or Cursor?
 
