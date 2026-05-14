@@ -44,17 +44,11 @@ One editor. Always.
 
 If you use Hyprland or sway, set `ZYN_SCOPE=mux,wm` and the same repo in two workspaces gets two independent editors — one per workspace. No cross-talk.
 
-## What this fixes
+## The missing layer
 
 How many editor instances do you have open right now? When was the last time you closed a duplicate nvim because some tool spawned it for you?
 
-Every tool in your terminal — Claude Code, yazi, lazygit, every grep result, every clickable path — invokes `$EDITOR` independently. Each spawns its own. None know about the editor already running next door.
-
-zyn fixes this by being the one `$EDITOR` that knows where your editor actually lives.
-
-## The missing layer
-
-Every modern IDE has session management baked in. VS Code, Cursor, Zed — all of them know which window owns which workspace, and route file-opens accordingly. The terminal ecosystem doesn't. Each tool is its own island.
+Every modern IDE has session management baked in. VS Code, Cursor, Zed — all of them know which window owns which workspace, and route file-opens accordingly. The terminal ecosystem doesn't. Each tool — Claude Code, yazi, lazygit, every grep result, every clickable path — invokes `$EDITOR` independently and spawns its own. None know about the editor already running next door.
 
 zyn is the missing layer. **Not a wrapper. Not a multiplexer. Not an IDE.** A small Python primitive that lets the tools you already use cooperate.
 
