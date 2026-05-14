@@ -63,3 +63,17 @@ Optional:
     ```
 
 You're done. From anywhere in this repo, `zyn src/app.py:42` opens that file in your nvim session, at line 42.
+
+## Usage
+
+```sh
+zyn src/app.py:42:5         # open at line 42, column 5
+zyn a.py b.py c.py:99       # multiple files; cursor lands on the last
+zyn --reveal                # focus the editor pane without opening a file
+zyn --detached notes.md     # raw editor, ignores any session
+zyn -w ~/other file.py      # attach to a session at a specific root
+```
+
+Zyn understands the `path:line:col` convention emitted by Claude Code, ripgrep, grep, ESLint, gcc, and most clickable-path terminal integrations — clicking a result anywhere in your terminal lands the file in the right editor, at the right line.
+
+For the full surface, run `zyn --help`.
