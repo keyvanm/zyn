@@ -4,12 +4,9 @@
 
 Get one editor per workspace. Every tool routes to it.
 
-Picture it: Claude Code on one side, Neovim on the other. You click `src/auth.rs:42` in Claude's output. VS Code would route 
-that to its open window — it handles session management internally. Terminal editors don't. Neovim spawns a new instance 
-instead.
+Yazi on the left, Claude Code on the right, nvim already open. You press Enter on a file in yazi — a new nvim takes over the pane. You click `src/auth.rs:42` in Claude Code's output — another one spawns somewhere else. The nvim you already had open goes untouched.
 
-With Zyn, your existing nvim — already running in the pane next door — jumps to that file, at line 42. No new instance. No 
-window-switching. No re-opening files you already had loaded.
+With **Zyn**, both route to the same session. Press Enter in yazi or click a path in Claude Code — your existing nvim jumps to that file, at the right line. No new instance. No window-switching.
 
 <!-- TODO: 5–10s asciinema/GIF here. Show: click a path in Claude Code's output → nvim in the next pane jumps to that line. -->
 
