@@ -10,7 +10,7 @@ Made primarily for terminal editors, with GUI editor support on the roadmap.
 
 ## Install
 
-### 1. Get uv
+### 0. Get uv
 
 [uv](https://docs.astral.sh/uv/) manages zyn and its Python runtime.
 
@@ -18,13 +18,13 @@ Made primarily for terminal editors, with GUI editor support on the roadmap.
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-### 2. Install zyn
+### 1. Install zyn
 
 ```sh
 uv tool install git+https://github.com/keyvanm/zyn
 ```
 
-### 3. Set your environment
+### 2. Set your environment
 
 ```sh
 export EDITOR=zyn
