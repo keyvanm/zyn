@@ -150,9 +150,9 @@ This is the stack to build toward. Install nvim, set `$EDITOR=zyn`, then pick yo
 If zyn saves you a context switch today:
 
 - ⭐ **Star the repo** to help prioritize a PyPI release
-- 🐛 **[Open an issue](https://github.com/keyvanm/zyn/issues)** for helix, VS Code, or anything broken
+- 🐛 **[Open an issue](https://github.com/keyvanm/zyn/issues)** for Helix, Kakoune, or anything broken
 - 💬 **Tell us how you use it**. We're still figuring out who else needs this
 
 **Today**: nvim sessions with optional scoping (multiplexer pane, WM workspace, or both), cross-workspace focus via zyn.nvim on Hyprland/sway, `path:line:col` parsing, multi-file open, race-safe sibling-pane handoff.
 
-**Roadmap**: VSCode/Codium/Helix support, tmux bundle (prebuilt session config + keybinds), hyprland bundle (prebuilt window rules + keybinds), publish to PyPI.
+**Roadmap**: Helix and Kakoune backends (PRs welcome, see the `Editor` ABC in `editors.py`), tmux bundle (prebuilt session config + keybinds), hyprland bundle (prebuilt window rules + keybinds), publish to PyPI.
