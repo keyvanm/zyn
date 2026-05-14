@@ -1,6 +1,6 @@
 # Zyn
 
-**The missing session layer for your terminal edtior.**
+**The missing session layer for your terminal editor**
 
 Get one editor per workspace. Every tool routes to it.
 
