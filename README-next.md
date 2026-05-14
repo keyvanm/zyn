@@ -159,3 +159,28 @@ sudo pacman -S neovim                   # Arch
 
 just fresh-install gigazyn
 ```
+
+## The Wired Workspace
+
+Install zyn, zyn.nvim, and the three bundles, and your terminal looks like this:
+
+```
+┌────────────┬──────────────────────┐
+│            │                      │
+│   yazi     │       nvim           │
+│ (explorer) │     (editor)         │
+│            │                      │
+├────────────┴──────────────────────┤
+│   terminal                        │
+└───────────────────────────────────┘
+```
+
+Launch it with `zellij --layout zyn`. Yazi browses your repo on the left with git status inline. Your nvim session lives on the right. A terminal sits below for builds, tests, or Claude Code.
+
+The loop: select a file in yazi — it opens in nvim. Run a test in the terminal that fails at `src/auth.rs:42` — click the path, nvim jumps there. Ask Claude about an unrelated bug; click `src/handler.rs:99` in its output — nvim again, same session, line 99. Hit `g,i` in yazi to launch lazygit, stage files, exit — your nvim is exactly where you left it.
+
+If you use Hyprland or sway, set `ZYN_SCOPE=mux,wm` and the same repo in two workspaces gets two independent editor sessions — one per workspace, no cross-talk.
+
+That's the wired workspace. For laptops or stacked layouts, `zellij --layout zynm` gives you the same panes in a mobile-friendly variant.
+
+**Coming from VS Code or Cursor?** This is the stack to build toward. Install nvim and zellij first; then run `just fresh-install-all` to install zyn, zyn.nvim, and all three bundles in one shot.
