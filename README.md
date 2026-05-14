@@ -8,6 +8,38 @@ Set `$EDITOR=zyn` and `$ZYN_EDITOR=nvim`. Bootstrap a session at your workspace 
 
 Made primarily for terminal editors, with GUI editor support on the roadmap.
 
+## Install
+
+### 1. Get uv
+
+uv manages zyn and its Python runtime.
+
+```sh
+# brew (macOS)
+brew install uv
+
+# pacman (Arch)
+sudo pacman -S uv
+
+# anywhere
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### 2. Install zyn
+
+```sh
+uv tool install git+https://github.com/keyvanm/zyn
+```
+
+### 3. Set your environment
+
+```sh
+export EDITOR=zyn
+export ZYN_EDITOR=nvim   # or helix, etc. — see roadmap
+```
+
+Add these to your shell profile to persist them.
+
 ## Usage
 
 ```sh
@@ -48,8 +80,67 @@ ZYN_NO_FOCUS=1             # persistent
 
 If a zellij/tmux layout spawns yazi and `zyn --start` in the same instant, `zyn file.py` from yazi waits up to 10 s for the editor pane to bind its socket, then attaches — instead of opening a duplicate. Two concurrent `--start` invocations error explicitly so you don't bootstrap a second editor by accident.
 
+## Bundles
+
+Zyn ships config bundles that wire sibling terminal tools to route through it. Install them with [`just`](https://just.systems) and [`stow`](https://www.gnu.org/software/stow/).
+
+```sh
+# brew (macOS)
+brew install just stow
+
+# pacman (Arch)
+sudo pacman -S just stow
+```
+
+Then clone this repo and run:
+
+```sh
+just fresh-install-all    # installs zyn + all bundles
+just fresh-install gatzi  # or pick individual bundles
+```
+
+Each `fresh-install` snapshots your existing config before overwriting it. Backups land in `~/.local/share/zyn/backups/`.
+
+### gatzi — yazi + lazygit
+
+Routes file selection in yazi and lazygit's editor actions through zyn. Also adds a yazi git-status indicator and a `gi` keybind to open lazygit.
+
+```sh
+# brew
+brew install yazi lazygit git
+
+# pacman
+sudo pacman -S yazi lazygit git
+```
+
+### zennij — zellij layouts
+
+Two zellij layouts (`zyn` desktop, `zynm` mobile/stacked) that open a yazi explorer and a `zyn --start` editor pane side by side.
+
+```sh
+# brew
+brew install zellij
+
+# pacman
+sudo pacman -S zellij
+```
+
+Launch with `zellij --layout zyn` or `zellij --layout zynm`.
+
+### gigazyn — neovim plugins
+
+Drops a neovim pack manifest into `~/.config/nvim/plugin/` that loads [`giga.nvim`](https://github.com/keyvanm/giga.nvim) and [`zyn.nvim`](https://github.com/keyvanm/zyn.nvim) on startup. `zyn.nvim` provides the focus hook that brings the editor pane to the foreground when zyn routes a file.
+
+```sh
+# brew
+brew install neovim
+
+# pacman
+sudo pacman -S neovim
+```
+
 ## Status
 
 Today: nvim sessions with zellij/tmux scoping, hyprland and sway focus, `path:line:col` parsing, multi-file open, race-safe sibling-pane handoff.
 
-Roadmap: VSCode/Codium/Helix support, yazi/zellij/tmux config bundles.
+Roadmap: VSCode/Codium/Helix support, tmux config bundle, hyprland bundle, publish to PyPI.
