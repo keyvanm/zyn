@@ -35,9 +35,9 @@ The wired version: zyn + the three bundles + zellij.
 
 Launch zellij with `--layout zyn`. Yazi browses your repo on the left, with git status inline. Your nvim sits on the right. A terminal below for builds, tests, or Claude Code.
 
-- Select a file in yazi → opens in nvim, line 1.
-- Run a test in the terminal that fails at `src/handler.rs:99` → click the path, nvim jumps there.
-- Ask Claude about an unrelated bug. Click the path in its output → nvim again, same session, right line.
+- Run `rg TODO` in the terminal, click any hit → nvim opens at the match.
+- `cargo test` fails at `src/handler.rs:99` → click the path, nvim jumps there.
+- ESLint warns about `app/page.tsx:14:7` in your dev server output → same nvim, same session.
 - Hit `gi` in yazi to launch lazygit, stage files, exit → your nvim is exactly where you left it.
 
 One editor. Always.
