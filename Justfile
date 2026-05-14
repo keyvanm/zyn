@@ -66,6 +66,19 @@ brew BUNDLE:
     fi
     brew install $pkgs
 
+# Install zyn from GitHub via uv tool.
+install-cli:
+    #!/usr/bin/env bash
+    if ! command -v uv &>/dev/null; then
+        echo "uv is required: curl -LsSf https://astral.sh/uv/install.sh | sh"
+        exit 1
+    fi
+    uv tool install git+https://github.com/keyvanm/zyn
+
+# Install zyn from the local source tree as an editable uv tool.
+install-cli-dev:
+    uv tool install --editable .
+
 # Backup, wipe, and reinstall the bundle from scratch.
 fresh-install BUNDLE:
     just backup {{BUNDLE}}
