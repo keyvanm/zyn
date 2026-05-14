@@ -14,6 +14,14 @@ That's zyn.
 
 ## The loop
 
+The basic loop works on any system, with any terminal. Open two terminals in your project. In one, run `zyn --start` — your editor boots in that pane. From the other, run `zyn src/app.py:42`. The file appears in the editor, on a new tab, at line 42. Open more terminals; every `zyn <file>` lands in the same editor.
+
+That's it. No multiplexer required, no bundles, just zyn.
+
+Now scale it. Set `$EDITOR=zyn` and every tool that opens files — Claude Code, yazi, lazygit, ripgrep, every clickable path — routes through the same editor.
+
+The wired version: zyn + the three bundles + zellij.
+
 ```
 ┌────────────┬──────────────────────┐
 │            │                      │
