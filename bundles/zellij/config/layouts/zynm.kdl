@@ -1,0 +1,44 @@
+layout {
+    ide_mobile
+    //
+    tab_template name="ide_mobile" {
+        pane stacked=true {
+            explorer name="Explorer"
+            editor name="Editor"
+            pane name="Terminal" size="15%"
+        }
+        compact_bar size=1
+    }
+    default_tab_template {
+        tab_bar size=1
+        children
+        status_bar size=2
+    }
+    //
+    pane_template name="explorer" {
+        command "yazi"
+    }
+    pane_template name="editor" {
+        command "zyn"
+        args "-s"
+    }
+    pane_template name="compact_bar" {
+        pane size=1 borderless=true {
+            plugin location="zellij:compact-bar" {
+                tooltip "Ctrl F1"
+            }
+        }
+    }
+    pane_template name="tab_bar" {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar" {
+                tooltip "Ctrl F1"
+            }
+        }
+    }
+    pane_template name="status_bar" {
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+}
