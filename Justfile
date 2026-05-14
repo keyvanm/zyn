@@ -74,12 +74,12 @@ fresh-install BUNDLE:
 
 fresh-install-all: (fresh-install "gatzi") (fresh-install "zennij") (fresh-install "gigazyn")
 
-install_all: (install "gatzi") (install "zennij") (install "gigazyn")
+install-all: (install "gatzi") (install "zennij") (install "gigazyn")
 
-uninstall_all: (uninstall "gatzi") (uninstall "zennij") (uninstall "gigazyn")
+uninstall-all: (uninstall "gatzi") (uninstall "zennij") (uninstall "gigazyn")
 
-backup_all: (backup "gatzi") (backup "zennij") (backup "gigazyn")
+backup-all: (backup "gatzi") (backup "zennij") (backup "gigazyn")
 
-clear_all: (clear "gatzi") (clear "zennij") (clear "gigazyn")
+clear-all: (clear "gatzi") (clear "zennij") (clear "gigazyn")
 
-brew_all: (brew "gatzi") (brew "zennij") (brew "gigazyn")
+brew-all: (brew "gatzi") (brew "zennij") (brew "gigazyn")
