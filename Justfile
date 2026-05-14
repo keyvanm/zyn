@@ -66,6 +66,14 @@ brew BUNDLE:
     fi
     brew install $pkgs
 
+# Backup, wipe, and reinstall the bundle from scratch.
+fresh-install BUNDLE:
+    just backup {{BUNDLE}}
+    just clear {{BUNDLE}} true
+    just install {{BUNDLE}}
+
+fresh-install-all: (fresh-install "gatzi") (fresh-install "zennij") (fresh-install "gigazyn")
+
 install_all: (install "gatzi") (install "zennij") (install "gigazyn")
 
 uninstall_all: (uninstall "gatzi") (uninstall "zennij") (uninstall "gigazyn")
