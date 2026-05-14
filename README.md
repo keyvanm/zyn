@@ -19,7 +19,9 @@ The basic loop works on any system, with any terminal. Open two terminals in you
 
 Now scale it. Set `$EDITOR=zyn` and every tool that opens files — Claude Code, yazi, lazygit, ripgrep, every clickable path — routes through the same editor.
 
-The wired version: zyn + the three bundles + zellij.
+The wired version comes in two flavors. Pick whichever matches the stack you already live in.
+
+### Wired with a multiplexer (zellij / tmux)
 
 ```
 ┌────────────┬──────────────────────┐
@@ -35,14 +37,20 @@ The wired version: zyn + the three bundles + zellij.
 
 Launch zellij with `--layout zyn`. Yazi browses your repo on the left, with git status inline. Your nvim sits on the right. A terminal below for builds, tests, or Claude Code.
 
+### Wired with Hyprland or sway
+
+Skip the multiplexer — your WM is the multiplexer. Run yazi, nvim, and a Claude Code terminal in three Hyprland windows; zyn finds the right session regardless of which window the call comes from.
+
+Set `ZYN_SCOPE=mux,wm` and the same repo opened in two workspaces gets two independent editors — one per workspace, no cross-talk. The [`zyn.nvim`](#companion-plugin-zynnvim) hook focuses the correct window when a file routes from another workspace, so a click in workspace 2 brings you to the nvim that owns it.
+
+### Either way
+
 - Run `rg TODO` in the terminal, click any hit → nvim opens at the match.
 - `cargo test` fails at `src/handler.rs:99` → click the path, nvim jumps there.
 - ESLint warns about `app/page.tsx:14:7` in your dev server output → same nvim, same session.
 - Hit `gi` in yazi to launch lazygit, stage files, exit → your nvim is exactly where you left it.
 
 One editor. Always.
-
-If you use Hyprland or sway, set `ZYN_SCOPE=mux,wm` and the same repo in two workspaces gets two independent editors — one per workspace. No cross-talk.
 
 ## The missing layer
 
