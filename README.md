@@ -8,7 +8,8 @@ You're in your terminal running Claude Code. An Neovim instance is running next 
 
 <!-- TODO: 5–10s asciinema/GIF here. Show: click a path in Claude Code's output → nvim in the next pane jumps to that line. -->
 
-> _Zyn started as an acronym — **Z**ellij, **Y**azi, **N**eovim — the three tools it was built to wire together. It outgrew the name. Today zyn works inside any multiplexer (or none), routes through any tool that respects `$EDITOR`, and extends to Hyprland and sway workspaces. The wiring stayed._
+> [!NOTE]
+> Zyn started as an acronym — **Z**ellij, **Y**azi, **N**eovim — the three tools it was built to wire together. It outgrew the name. Today zyn works inside any multiplexer (or none), is built to be editor agnostic, and extends to Hyprland and sway workspaces. The wiring stayed.
 
 ## The loop
 
