@@ -15,3 +15,51 @@ You end up navigating back to the right editor more often than reading the file.
 Zyn fixes this by being the one `$EDITOR` that knows where your editor actually lives.
 
 Unlike yazelix, which depends on Nix and locks you into Zellij, Zyn is a single Python tool that works inside any multiplexer — or none — and extends to Hyprland and sway workspaces.
+
+## Install
+
+> [!NOTE]
+> Zyn routes to nvim only today (helix and others are on the [roadmap](#roadmap)). If you don't run a terminal editor yet, see [The Wired Workspace](#the-wired-workspace) first — it shows what zyn enables and the stack to build toward.
+
+### Prerequisites
+
+Required:
+
+- **nvim**
+- **uv** — manages zyn's Python runtime. We'll install it in step 1 if you don't have it.
+
+Optional:
+
+- **A multiplexer** (zellij or tmux) — zyn works without one, but unlocks per-session scoping when you have one.
+
+### Steps
+
+1. **Install uv** (skip if you already have it):
+
+    ```sh
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```
+
+2. **Install zyn**:
+
+    ```sh
+    uv tool install git+https://github.com/keyvanm/zyn
+    ```
+
+3. **Set your environment**:
+
+    ```sh
+    export EDITOR=zyn
+    export ZYN_EDITOR=nvim
+    ```
+
+    Add these to your shell profile to persist them.
+
+4. **Bootstrap a session** at your workspace root:
+
+    ```sh
+    cd ~/projects/myrepo
+    zyn --start
+    ```
+
+You're done. From anywhere in this repo, `zyn src/app.py:42` opens that file in your nvim session, at line 42.
