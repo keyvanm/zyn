@@ -2,7 +2,7 @@
 
 **The missing session layer for your terminal editor**
 
-Get one editor per workspace. Every tool routes to it.
+Get one editor per project. Every tool routes to it.
 
 Yazi on the left, Claude Code on the right, nvim already open. You press Enter on a file in yazi — a new nvim takes over the pane. You click `src/auth.rs:42` in Claude Code's output — another one spawns somewhere else. The nvim you already had open goes untouched.
 
@@ -74,9 +74,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # 2. Install zyn
 uv tool install git+https://github.com/keyvanm/zyn
 
-# 3. Set your environment (add these to your shell profile)
+# 3. Set your environment (add this to your shell profile)
 export EDITOR=zyn
-export ZYN_EDITOR=nvim
 
 # 4. Bootstrap a session at your workspace root
 cd ~/projects/myrepo
@@ -108,7 +107,7 @@ Requires nvim 0.12+ for `vim.pack`. For older versions, use your plugin manager 
 
 ## Bundles
 
-zyn.nvim is the first companion. **Bundles** are more — curated configs that wire your other tools (yazi, lazygit, zellij) to use zyn's routing, plus quality-of-life additions.
+zyn.nvim is the first companion. **Bundles** go further — curated configs that wire your other tools (yazi, lazygit, zellij) to use zyn's routing, plus quality-of-life additions.
 
 ```sh
 # install just + stow first (the bundle install mechanism)
@@ -137,7 +136,7 @@ Prefer to integrate manually? Each bundle in `bundles/<name>/` is a stow package
 
 This is the stack to build toward. Install nvim, set `$EDITOR=zyn`, then pick your tiling:
 
-- **macOS or a stacking WM**: install zellij and run `just fresh-install-all` — you get yazi + nvim + terminal in one `--layout zyn` window.
+- **Without a tiling WM**: install zellij and run `just fresh-install-all` — you get yazi + nvim + terminal in one `--layout zyn` window.
 - **Hyprland or sway**: skip zellij — your WM already tiles. Run `just fresh-install gatzi` (yazi/lazygit wiring) and `just fresh-install gigazyn` (nvim plugin pack). One editor per repo follows you across every workspace.
 
 The first day you click a Claude Code path and watch it land in the right place, you'll wonder why no one built this sooner.
@@ -152,4 +151,4 @@ If zyn saves you a context switch today:
 
 **Today**: nvim sessions with optional scoping (multiplexer pane, WM workspace, or both), cross-workspace focus via zyn.nvim on Hyprland/sway, `path:line:col` parsing, multi-file open, race-safe sibling-pane handoff.
 
-**Roadmap**: VSCode/Codium/Helix support, tmux config bundle, hyprland bundle (prebuilt window rules + keybinds), publish to PyPI.
+**Roadmap**: VSCode/Codium/Helix support, tmux bundle (prebuilt session config + keybinds), hyprland bundle (prebuilt window rules + keybinds), publish to PyPI.
