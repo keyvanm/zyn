@@ -2,6 +2,7 @@
 name = "zyn"
 version = "0.0.1"
 description = "One editor per workspace"
+license = "MIT"
 readme = "README.md"
 authors = [
     { name = "Keyvan Mosharraf", email = "keyvan@keyvanm.com" }
