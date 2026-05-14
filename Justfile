@@ -85,9 +85,9 @@ fresh-install BUNDLE:
     just clear {{BUNDLE}} true
     just install {{BUNDLE}}
 
-fresh-install-all: (fresh-install "gatzi") (fresh-install "zennij") (fresh-install "gigazyn")
+fresh-install-all: install-cli (fresh-install "gatzi") (fresh-install "zennij") (fresh-install "gigazyn")
 
-install-all: (install "gatzi") (install "zennij") (install "gigazyn")
+install-all: install-cli (install "gatzi") (install "zennij") (install "gigazyn")
 
 uninstall-all: (uninstall "gatzi") (uninstall "zennij") (uninstall "gigazyn")
 
