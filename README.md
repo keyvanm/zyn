@@ -35,11 +35,11 @@ The wired version comes in two flavors. Pick whichever matches the stack you alr
 └────────────┴──────────────────────┘
 ```
 
-Launch zellij with `--layout zyn`. Yazi browses your repo on the left, with git status inline. Your nvim sits on the right. A terminal below for builds, tests, or Claude Code.
+Launch zellij with `--layout zyn` — yazi browses your repo on the left with git status inline, your nvim sits on the right, a terminal below for builds, tests, or Claude Code. On tmux, recreate the same three-pane arrangement and the wiring is identical: every pane invokes `zyn`, every `zyn` lands in the editor above.
 
 ### Wired with Hyprland or sway
 
-Skip the multiplexer — your WM is the multiplexer. Run yazi, nvim, and a Claude Code terminal in three Hyprland windows; zyn finds the right session regardless of which window the call comes from.
+Skip the multiplexer — your WM is the multiplexer. Run yazi, nvim, and a Claude Code terminal in three tiled windows; zyn finds the right session regardless of which window the call comes from.
 
 Set `ZYN_SCOPE=mux,wm` and the same repo opened in two workspaces gets two independent editors — one per workspace, no cross-talk. The [`zyn.nvim`](#companion-plugin-zynnvim) hook focuses the correct window when a file routes from another workspace, so a click in workspace 2 brings you to the nvim that owns it.
 
@@ -48,7 +48,7 @@ Set `ZYN_SCOPE=mux,wm` and the same repo opened in two workspaces gets two indep
 - Run `rg TODO` in the terminal, click any hit → nvim opens at the match.
 - `cargo test` fails at `src/handler.rs:99` → click the path, nvim jumps there.
 - ESLint warns about `app/page.tsx:14:7` in your dev server output → same nvim, same session.
-- Lazygit, staging files, want to quickly see this file? Press `e` → lands in your nvim
+- Press `e` on a file in lazygit → opens in your nvim, ready to edit.
 
 One editor. Always.
 
