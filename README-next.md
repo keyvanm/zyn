@@ -78,9 +78,22 @@ Zyn understands the `path:line:col` convention emitted by Claude Code, ripgrep, 
 
 For the full surface, run `zyn --help`.
 
+## zyn.nvim
+
+[`zyn.nvim`](https://github.com/keyvanm/zyn.nvim) is the companion plugin that completes the experience. When zyn routes a file into a session living in another multiplexer pane (or Hyprland workspace), it triggers a hook in zyn.nvim that focuses that pane — so you actually see the file. Without it, the file still routes; you just stay in the calling pane.
+
+Add it to your nvim config:
+
+```lua
+-- in any file under ~/.config/nvim/plugin/
+vim.pack.add({ "https://github.com/keyvanm/zyn.nvim" })
+```
+
+Requires nvim 0.12+ for `vim.pack`. For older versions, install via your plugin manager of choice.
+
 ## Bundles
 
-Zyn alone routes file-opens. Bundles are curated configs that wire your other tools to use the routing — yazi git status, zellij layouts that auto-bootstrap a session, nvim plugins that focus the right pane when a file lands.
+zyn.nvim is the first companion. Bundles are more — curated configs that wire your sibling terminal tools (yazi, lazygit, zellij) to use zyn's routing, plus quality-of-life additions like layouts and keybinds.
 
 ### Prerequisites
 
@@ -138,7 +151,7 @@ Launch with `zellij --layout zyn` or `zellij --layout zynm`.
 
 #### gigazyn — neovim plugins
 
-Drops a neovim pack manifest into `~/.config/nvim/plugin/` that loads [`giga.nvim`](https://github.com/keyvanm/giga.nvim) and [`zyn.nvim`](https://github.com/keyvanm/zyn.nvim) on startup. `zyn.nvim` provides the focus hook that brings the editor pane to the foreground when zyn routes a file there.
+Drops a neovim pack manifest into `~/.config/nvim/plugin/` that loads [`giga.nvim`](https://github.com/keyvanm/giga.nvim) and [`zyn.nvim`](https://github.com/keyvanm/zyn.nvim) on startup. If you already added zyn.nvim standalone, you can remove that line — gigazyn covers it.
 
 ```sh
 brew install neovim                     # macOS
