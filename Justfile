@@ -35,17 +35,17 @@ backup BUNDLE:
     printf '%s' "$dirs" | tar -czf "$archive" -C "{{config_dir}}" -T -
     echo "{{BUNDLE}}: backed up to $archive"
 
-# Wipe the bundle's entire install footprint from ~/.config. Destructive.
-clean BUNDLE:
+# Wipe all ~/.config dirs the bundle touches. Destructive.
+clear BUNDLE:
     #!/usr/bin/env bash
     set -euo pipefail
-    cd bundles/{{BUNDLE}}
-    while IFS= read -r p; do
-        target="{{config_dir}}/$p"
+    for d in bundles/{{BUNDLE}}/*/; do
+        name=$(basename "$d")
+        target="{{config_dir}}/$name"
         if [ -e "$target" ] || [ -L "$target" ]; then
-            rm -f "$target"
+            rm -rf "$target"
         fi
-    done < <(find . -type f -not -name deps.txt | sed 's|^\./||')
+    done
 
 # Install upstream tools listed in the bundle's deps.txt via brew.
 brew BUNDLE:
@@ -69,6 +69,6 @@ uninstall_all: (uninstall "gatzi") (uninstall "zennij") (uninstall "gigazyn")
 
 backup_all: (backup "gatzi") (backup "zennij") (backup "gigazyn")
 
-clean_all: (clean "gatzi") (clean "zennij") (clean "gigazyn")
+clear_all: (clear "gatzi") (clear "zennij") (clear "gigazyn")
 
 brew_all: (brew "gatzi") (brew "zennij") (brew "gigazyn")
