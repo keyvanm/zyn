@@ -4,7 +4,12 @@
 
 Get one editor per workspace. Every tool routes to it.
 
-You're in your terminal running Claude Code. An Neovim instance is running next to the terminal, where you read files and make your edits. You click `src/auth.rs:42` in Claude Code's output. A coherent experience begets the file open in your existing editor instance, which does happen with say VSCode (it does its own internal routing), but with terminal editors like vim and Neovim, you get a new nvim window. With **Zyn**, your existing nvim — already running in the pane next door — jumps to that file, at line 42. No new instance. No window-switching. No re-opening files you already had loaded.
+Picture it: Claude Code on one side, Neovim on the other. You click `src/auth.rs:42` in Claude's output. VS Code would route 
+that to its open window — it handles session management internally. Terminal editors don't. Neovim spawns a new instance 
+instead.
+
+With Zyn, your existing nvim — already running in the pane next door — jumps to that file, at line 42. No new instance. No 
+window-switching. No re-opening files you already had loaded.
 
 <!-- TODO: 5–10s asciinema/GIF here. Show: click a path in Claude Code's output → nvim in the next pane jumps to that line. -->
 
@@ -14,8 +19,6 @@ You're in your terminal running Claude Code. An Neovim instance is running next 
 ## The loop
 
 The basic loop works on any system, with any terminal. Open two terminals in your project. In one, run `zyn --start` — your editor boots in that pane. From the other, run `zyn src/app.py:42`. The file appears in the editor, on a new tab, at line 42. Open more terminals; every `zyn <file>` lands in the same editor.
-
-That's it. No multiplexer required, no bundles, just zyn.
 
 Now scale it. Set `$EDITOR=zyn` and every tool that opens files — Claude Code, yazi, lazygit, ripgrep, every clickable path — routes through the same editor.
 
