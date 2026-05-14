@@ -1,142 +1,149 @@
 # Zyn
 
-> Abandon your IDE and use a master terminal editor tied to a workspace root.
+> **The missing session layer for your terminal.**
+>
+> One editor per workspace. Every tool routes to it.
 
-Zyn designates a terminal editor as the master synced to a workspace root, and optionally a multiplexer session, Hyprland workspace or both. Click a file path in your Claude Code terminal, select a file in Yazi, follow any reference — it lands in your master editor for that workspace, at the right line, not in a new pane or window.
+You're in your terminal. You click `src/auth.rs:42` in Claude Code's output. You expect a new nvim window. Instead, your existing nvim — already running in the pane next door — jumps to that file, at line 42. No new instance. No window-switching. No re-opening files you already had loaded.
 
-Set `$EDITOR=zyn` and `$ZYN_EDITOR=nvim`. Bootstrap a session at your workspace root with `zyn --start`; from then on, every `zyn <file>` inside that tree routes into the same editor. No wiring per tool, no configuration per workspace.
+That's zyn.
 
-Made primarily for terminal editors, with GUI editor support on the roadmap.
+<!-- TODO: 5–10s asciinema/GIF here. Show: click a path in Claude Code's output → nvim in the next pane jumps to that line. -->
+
+> _Zyn started as an acronym — **Z**ellij, **Y**azi, **N**eovim — the three tools it was built to wire together. It outgrew the name. Today zyn works inside any multiplexer (or none), routes through any tool that respects `$EDITOR`, and extends to Hyprland and sway workspaces. The wiring stayed._
+
+## The loop
+
+The basic loop works on any system, with any terminal. Open two terminals in your project. In one, run `zyn --start` — your editor boots in that pane. From the other, run `zyn src/app.py:42`. The file appears in the editor, on a new tab, at line 42. Open more terminals; every `zyn <file>` lands in the same editor.
+
+That's it. No multiplexer required, no bundles, just zyn.
+
+Now scale it. Set `$EDITOR=zyn` and every tool that opens files — Claude Code, yazi, lazygit, ripgrep, every clickable path — routes through the same editor.
+
+The wired version: zyn + the three bundles + zellij.
+
+```
+┌────────────┬──────────────────────┐
+│            │                      │
+│   yazi     │       nvim           │
+│ (explorer) │     (editor)         │
+│            │                      │
+│            ├──────────────────────┤
+│            │     terminal         │
+│            │                      │
+└────────────┴──────────────────────┘
+```
+
+Launch zellij with `--layout zyn`. Yazi browses your repo on the left, with git status inline. Your nvim sits on the right. A terminal below for builds, tests, or Claude Code.
+
+- Select a file in yazi → opens in nvim, line 1.
+- Run a test in the terminal that fails at `src/handler.rs:99` → click the path, nvim jumps there.
+- Ask Claude about an unrelated bug. Click the path in its output → nvim again, same session, right line.
+- Hit `gi` in yazi to launch lazygit, stage files, exit → your nvim is exactly where you left it.
+
+One editor. Always.
+
+If you use Hyprland or sway, set `ZYN_SCOPE=mux,wm` and the same repo in two workspaces gets two independent editors — one per workspace. No cross-talk.
+
+## What this fixes
+
+How many editor instances do you have open right now? When was the last time you closed a duplicate nvim because some tool spawned it for you?
+
+Every tool in your terminal — Claude Code, yazi, lazygit, every grep result, every clickable path — invokes `$EDITOR` independently. Each spawns its own. None know about the editor already running next door.
+
+zyn fixes this by being the one `$EDITOR` that knows where your editor actually lives.
+
+## The missing layer
+
+Every modern IDE has session management baked in. VS Code, Cursor, Zed — all of them know which window owns which workspace, and route file-opens accordingly. The terminal ecosystem doesn't. Each tool is its own island.
+
+zyn is the missing layer. **Not a wrapper. Not a multiplexer. Not an IDE.** A small Python primitive that lets the tools you already use cooperate.
+
+> _(Tried yazelix? It depends on Nix and locks you into Zellij. zyn is a single Python tool that works with whatever stack you already have.)_
 
 ## Install
 
-> [!NOTE]
-> Want a fresh install of everything, including the bundles? Go to [Bundles](#bundles).
-
-### 0. Get uv
-
-[uv](https://docs.astral.sh/uv/) manages zyn and its Python runtime.
+Required: **nvim**, **uv** (we'll install it in step 1).
+Optional: a multiplexer (zellij or tmux).
 
 ```sh
+# 1. Install uv (skip if you have it)
 curl -LsSf https://astral.sh/uv/install.sh | sh
-```
 
-### 1. Install zyn
-
-```sh
+# 2. Install zyn
 uv tool install git+https://github.com/keyvanm/zyn
-```
 
-### 2. Set your environment
-
-```sh
+# 3. Set your environment (add these to your shell profile)
 export EDITOR=zyn
-export ZYN_EDITOR=nvim   # or helix, etc. — see roadmap
-```
+export ZYN_EDITOR=nvim
 
-Add these to your shell profile to persist them.
-
-## Usage
-
-```sh
+# 4. Bootstrap a session at your workspace root
 cd ~/projects/myrepo
-zyn --start                # bootstrap a session here
-
-zyn src/app.py             # opens in the session (from anywhere in the tree)
-zyn src/app.py:42:5        # opens at line 42, column 5
-zyn a.py b.py c.py:99      # multiple files; cursor lands on the last
-zyn --detached notes.md    # raw editor, ignores any session
-zyn -w ~/other file.py     # attach to a session at a specific root
-zyn --reveal               # focus the editor pane without opening a file
+zyn --start
 ```
 
-`zyn` understands the `path:line:col` convention emitted by ripgrep, grep, ESLint, gcc, and most clickable-path terminal integrations.
-
-## Session scoping
-
-By default, sessions are keyed by `(root, multiplexer session)`. So `zyn --start` in zellij session A and another in zellij session B are independent — opening a file from each routes to the right one, even when they share the same workspace root.
+You're done. From anywhere in this repo, `zyn src/app.py:42` opens that file in your nvim session, at line 42.
 
 ```sh
-ZYN_SCOPE=mux,wm           # also scope by WM workspace (hyprland/sway)
-zyn --scope none ...       # disable scoping entirely; plain root-only key
+zyn src/app.py:42:5         # open at line 42, column 5
+zyn a.py b.py c.py:99       # multiple files; cursor lands on the last
+zyn --reveal                # focus the editor pane without opening a file
+zyn --detached notes.md     # raw editor, ignores any session
+zyn -w ~/other file.py      # attach to a session at a specific root
 ```
 
-Hyprland users typically set `ZYN_SCOPE=mux,wm` to get one session per (project, workspace) — same repo can run two parallel editors in two workspaces.
+zyn understands the `path:line:col` convention emitted by Claude Code, ripgrep, grep, ESLint, gcc, and most clickable-path terminal integrations. For the full surface, run `zyn --help`.
 
-## Pane focus follow
+## Companion plugin: zyn.nvim
 
-When `zyn` routes a file into a session living in another multiplexer pane (or hyprland workspace), it triggers an editor-side hook that also focuses that pane and/or window — so you actually see the file. Requires the `zyn.nvim` companion plugin in your nvim config; without it, the file still routes, you just stay in the calling pane.
+[`zyn.nvim`](https://github.com/keyvanm/zyn.nvim) completes the experience. When zyn routes a file to a session in another pane (or another Hyprland workspace), zyn.nvim's hook focuses that pane — so you actually _see_ the file. Without it, the file still routes; you just stay in the calling pane.
 
-```sh
-zyn --no-focus file.py     # opt out for one invocation
-ZYN_NO_FOCUS=1             # persistent
+```lua
+-- in any file under ~/.config/nvim/plugin/
+vim.pack.add({ "https://github.com/keyvanm/zyn.nvim" })
 ```
 
-## Race handling
-
-If a zellij/tmux layout spawns yazi and `zyn --start` in the same instant, `zyn file.py` from yazi waits up to 10 s for the editor pane to bind its socket, then attaches — instead of opening a duplicate. Two concurrent `--start` invocations error explicitly so you don't bootstrap a second editor by accident.
+Requires nvim 0.12+ for `vim.pack`. For older versions, use your plugin manager of choice.
 
 ## Bundles
 
-Zyn ships config bundles that wire sibling terminal tools to route through it. Install them with [`just`](https://just.systems) and [`stow`](https://www.gnu.org/software/stow/).
+zyn.nvim is the first companion. **Bundles** are more — curated configs that wire your other tools (yazi, lazygit, zellij) to use zyn's routing, plus quality-of-life additions.
 
 ```sh
-# brew (macOS)
-brew install just stow
+# install just + stow first (the bundle install mechanism)
+brew install just stow                  # macOS
+sudo pacman -S just stow                # Arch
 
-# pacman (Arch)
-sudo pacman -S just stow
+# then install one bundle, or all of them
+just fresh-install gatzi
+just fresh-install-all                  # all bundles + zyn CLI
 ```
 
-Then clone this repo and run:
+> [!NOTE]
+> Fresh-install backs up the `~/.config/` directories the bundle touches to `~/.local/share/zyn/backups/` before replacing them. Originals are recoverable.
 
-```sh
-just fresh-install-all    # installs zyn + all bundles
-just fresh-install gatzi  # or pick individual bundles
-```
+Each bundle has a `deps.txt` listing the system packages it depends on. Install them with `just brew <bundle>` (macOS) or your package manager of choice.
 
-Each `fresh-install` snapshots your existing config before overwriting it. Backups land in `~/.local/share/zyn/backups/`.
+Prefer to integrate manually? Each bundle in `bundles/<name>/` is a stow package — cherry-pick files into your existing config, or run `stow` yourself.
 
-### gatzi — yazi + lazygit
+| Bundle      | What it does                                                                                                                                                                                                                                                                                                                                                                  | Upstream deps       |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| **gatzi**   | yazi + lazygit wiring; yazi git-status indicator; `gi` keybind to launch lazygit from yazi. Post-install runs `ya pkg install` to fetch the yazi plugins it depends on.                                                                                                                                                                                                       | yazi, lazygit, git  |
+| **zennij**  | Two zellij layouts: `zyn` (desktop), `zynm` (mobile/stacked)                                                                                                                                                                                                                                                                                                                  | zellij              |
+| **gigazyn** | nvim pack manifest loading [`giga.nvim`](https://github.com/keyvanm/giga.nvim) and [`zyn.nvim`](https://github.com/keyvanm/zyn.nvim). Replaces a standalone zyn.nvim install. giga.nvim's language pack expects formatters and LSPs (ruff, ty, marksman, stylua, etc.) — see giga.nvim's [Requirements](https://github.com/keyvanm/giga.nvim#requirements) for the full list. | neovim, tree-sitter |
 
-Routes file selection in yazi and lazygit's editor actions through zyn. Also adds a yazi git-status indicator and a `gi` keybind to open lazygit.
+## Coming from VS Code or Cursor?
 
-```sh
-# brew
-brew install yazi lazygit git
+This is the stack to build toward. Install nvim and zellij first; then `just fresh-install-all` to install zyn, zyn.nvim, and all three bundles in one shot. The first day you click a Claude Code path and watch it land in the right pane, you'll wonder why no one built this sooner.
 
-# pacman
-sudo pacman -S yazi lazygit git
-```
+## What's next
 
-### zennij — zellij layouts
+If zyn saves you a context switch today:
 
-Two zellij layouts (`zyn` desktop, `zynm` mobile/stacked) that open a yazi explorer and a `zyn --start` editor pane side by side.
+- ⭐ **Star the repo** — helps prioritize a PyPI release
+- 🐛 **[Open an issue](https://github.com/keyvanm/zyn/issues)** for helix, VS Code, or anything broken
+- 💬 **Tell us how you use it** — we're still figuring out who else needs this
 
-```sh
-# brew
-brew install zellij
+**Today**: nvim sessions with zellij/tmux scoping, Hyprland and sway focus, `path:line:col` parsing, multi-file open, race-safe sibling-pane handoff.
 
-# pacman
-sudo pacman -S zellij
-```
-
-Launch with `zellij --layout zyn` or `zellij --layout zynm`.
-
-### gigazyn — neovim plugins
-
-Drops a neovim pack manifest into `~/.config/nvim/plugin/` that loads [`giga.nvim`](https://github.com/keyvanm/giga.nvim) and [`zyn.nvim`](https://github.com/keyvanm/zyn.nvim) on startup. `zyn.nvim` provides the focus hook that brings the editor pane to the foreground when zyn routes a file.
-
-```sh
-# brew
-brew install neovim
-
-# pacman
-sudo pacman -S neovim
-```
-
-## Status
-
-Today: nvim sessions with zellij/tmux scoping, hyprland and sway focus, `path:line:col` parsing, multi-file open, race-safe sibling-pane handoff.
-
-Roadmap: VSCode/Codium/Helix support, tmux config bundle, hyprland bundle, publish to PyPI.
+**Roadmap**: VSCode/Codium/Helix support, tmux config bundle, hyprland bundle, publish to PyPI.
