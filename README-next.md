@@ -77,3 +77,72 @@ zyn -w ~/other file.py      # attach to a session at a specific root
 Zyn understands the `path:line:col` convention emitted by Claude Code, ripgrep, grep, ESLint, gcc, and most clickable-path terminal integrations — clicking a result anywhere in your terminal lands the file in the right editor, at the right line.
 
 For the full surface, run `zyn --help`.
+
+## Bundles
+
+Zyn alone routes file-opens. Bundles are curated configs that wire your other tools to use the routing — yazi git status, zellij layouts that auto-bootstrap a session, nvim plugins that focus the right pane when a file lands.
+
+### Prerequisites
+
+The bundle install mechanism uses [`just`](https://just.systems) and [`stow`](https://www.gnu.org/software/stow/):
+
+```sh
+brew install just stow                  # macOS
+sudo pacman -S just stow                # Arch
+```
+
+### Two install paths
+
+**Fresh install (recommended).**
+
+> [!NOTE]
+> Fresh-install backs up the `~/.config/` directories the bundle touches to `~/.local/share/zyn/backups/`, then replaces them with the bundle's config. Your originals are recoverable from the backup.
+
+```sh
+just fresh-install gatzi                # one bundle
+just fresh-install-all                  # all bundles + zyn CLI
+```
+
+**Integrate manually.** Each bundle in `bundles/<name>/` is a stow package mirroring `~/.config/`. Cherry-pick files into your existing config, or run stow yourself:
+
+```sh
+cd bundles/gatzi
+stow --no-folding -t ~/.config .
+```
+
+### Available bundles
+
+#### gatzi — yazi + lazygit
+
+Routes file selection in yazi and lazygit's editor actions through zyn. Adds a yazi git-status indicator and a `gi` keybind to open lazygit from yazi.
+
+```sh
+brew install yazi lazygit git           # macOS
+sudo pacman -S yazi lazygit git         # Arch
+
+just fresh-install gatzi
+```
+
+#### zennij — zellij layouts
+
+Two zellij layouts that open a yazi explorer and a `zyn --start` editor pane side by side: `zyn` (desktop) and `zynm` (mobile/stacked).
+
+```sh
+brew install zellij                     # macOS
+sudo pacman -S zellij                   # Arch
+
+just fresh-install zennij
+```
+
+Launch with `zellij --layout zyn` or `zellij --layout zynm`.
+
+#### gigazyn — neovim plugins
+
+Drops a neovim pack manifest into `~/.config/nvim/plugin/` that loads [`giga.nvim`](https://github.com/keyvanm/giga.nvim) and [`zyn.nvim`](https://github.com/keyvanm/zyn.nvim) on startup. `zyn.nvim` provides the focus hook that brings the editor pane to the foreground when zyn routes a file there.
+
+```sh
+brew install neovim                     # macOS
+sudo pacman -S neovim                   # Arch
+
+just fresh-install gigazyn
+```
