@@ -156,7 +156,7 @@ Requires nvim 0.12+ for `vim.pack`. For older versions, use your plugin manager 
 
 ## Bundles
 
-zyn.nvim is the first companion. **Bundles** go further: curated configs that wire your other tools (yazi, lazygit, zellij) to use zyn's routing, plus quality-of-life additions.
+Each integration ships as a **bundle** — a stow package under `bundles/<name>/` that symlinks the files into `~/.config/`.
 
 ```sh
 # install just + stow first (the bundle install mechanism)
@@ -168,8 +168,18 @@ just fresh-install gatzi
 just fresh-install-all                  # all bundles + zyn CLI
 ```
 
-> [!NOTE]
-> Fresh-install backs up the `~/.config/` directories the bundle touches to `~/.local/share/zyn/backups/` before replacing them. Originals are recoverable.
+### Anatomy of `just`
+
+| Verb                          | What it does                                                               |
+| ----------------------------- | -------------------------------------------------------------------------- |
+| `just install <bundle>`       | Symlink the bundle into `~/.config/` via stow. Fails on conflict.          |
+| `just fresh-install <bundle>` | Backup → clear → install. Use this if you already have configs in the way. |
+| `just uninstall <bundle>`     | Remove zyn's symlinks. Your own files stay.                                |
+| `just brew <bundle>`          | Install the bundle's upstream tools from `deps.txt` (macOS).               |
+
+Append `-all` to any verb to batch across the full catalog: `just fresh-install-all`, `just uninstall-all`, `just brew-all`, etc.
+
+Backups land in `~/.local/share/zyn/backups/` as timestamped tarballs. Restore by extracting.
 
 Each bundle has a `deps.txt` listing the system packages it depends on. Install them with `just brew <bundle>` (macOS) or your package manager of choice.
 
