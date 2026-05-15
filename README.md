@@ -6,7 +6,7 @@ Open files in one shared terminal editor per project — anywhere in the worktre
 
 ## Why Zyn?
 
-Yazi on the left, Claude Code on the right, nvim already open. You press Enter on a file in yazi and a new nvim takes over the pane. You click `src/auth.rs:42` in Claude Code's output and another one spawns somewhere else. The nvim you already had open is sitting there awkwardly.
+Your terminal file manager, yazi, on the left, Claude Code on the right, Neovim already open. You press Enter on a file in yazi and a new nvim takes over the pane. You click `src/auth.rs:42` in Claude Code's output and another one spawns somewhere else. The nvim you already had open is sitting there awkwardly.
 
 With **Zyn**, both route to the same session. Press Enter in yazi or click a path in Claude Code, your existing nvim jumps to that file, at the right line. No new instance. No window-switching.
 
@@ -27,8 +27,11 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # 2. Install zyn
 uv tool install git+https://github.com/keyvanm/zyn
 
-# 3. Set your environment (add this to your shell profile)
+# 3. Set EDITOR=zyn — run it now, and add the same line to your shell's startup file
+# bash or zsh → ~/.bashrc or ~/.zshrc
 export EDITOR=zyn
+# fish → ~/.config/fish/config.fish
+set -gx EDITOR zyn
 
 # 4. Bootstrap a session at your workspace root
 cd ~/projects/myrepo
@@ -101,7 +104,7 @@ By default, one repo means one editor, even across workspaces. Drop a terminal o
 
 How many different terminal editor instances do you have open right now? How many of them did you actually mean to open?
 
-Every modern IDE is a container. The terminal, the coding agent, the editor — all live inside it. VS Code, Cursor, Zed: the IDE owns the wall, and routing file-opens is bookkeeping within it.
+Every modern IDE is a container; not the Docker kind, but in the sense that VS Code owns the window and everything else lives inside it. The terminal, the coding agent, the editor — all live inside it. VS Code, Cursor, Zed: the IDE owns the wall, and routing file-opens is bookkeeping within it.
 
 zyn is the inverse topology. There is no wall — your terminal, your coding agent, your editor are siblings in your WM or multiplexer. What an IDE achieves by _containment_, zyn achieves by _designation_: one sibling is the master editor, and every other tool routes into it.
 
@@ -176,11 +179,11 @@ just pkg-all                            # all upstream tools
 
 ### Anatomy of `just`
 
-| Verb                          | What it does                                                               |
-| ----------------------------- | -------------------------------------------------------------------------- |
-| `just install <bundle>`       | Symlink the bundle into `~/.config/` via stow. Fails on conflict.          |
-| `just fresh-install <bundle>` | Backup → clear → install. Use this if you already have configs in the way. |
-| `just uninstall <bundle>`     | Remove zyn's symlinks. Your own files stay.                                |
+| Verb                          | What it does                                                                 |
+| ----------------------------- | ---------------------------------------------------------------------------- |
+| `just install <bundle>`       | Symlink the bundle into `~/.config/` via stow. Fails on conflict.            |
+| `just fresh-install <bundle>` | Backup → clear → install. Use this if you already have configs in the way.   |
+| `just uninstall <bundle>`     | Remove zyn's symlinks. Your own files stay.                                  |
 | `just pkg <bundle>`           | Install upstream tools from `deps.txt`. Auto-detects pacman, apt, dnf, brew. |
 
 Append `-all` to any verb to batch across the full catalog: `just fresh-install-all`, `just uninstall-all`, `just pkg-all`, etc.
