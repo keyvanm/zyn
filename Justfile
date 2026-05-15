@@ -90,15 +90,28 @@ install-cli:
 install-cli-dev:
     uv tool install --editable .
 
+# Install zyn-probe (rust session probe) from GitHub via cargo.
+install-probe:
+    #!/usr/bin/env bash
+    if ! command -v cargo &>/dev/null; then
+        echo "cargo is required: https://rustup.rs"
+        exit 1
+    fi
+    cargo install --git https://github.com/keyvanm/zyn zyn-probe
+
+# Install zyn-probe from the local source tree.
+install-probe-dev:
+    cargo install --path zyn-probe
+
 # Backup, wipe, and reinstall the bundle from scratch.
 fresh-install BUNDLE:
     just backup {{BUNDLE}}
     just clear {{BUNDLE}} true
     just install {{BUNDLE}}
 
-fresh-install-all: install-cli (fresh-install "gatzi") (fresh-install "zennij") (fresh-install "gigazyn") (fresh-install "kitty")
+fresh-install-all: install-cli install-probe (fresh-install "gatzi") (fresh-install "zennij") (fresh-install "gigazyn") (fresh-install "kitty")
 
-install-all: install-cli (install "gatzi") (install "zennij") (install "gigazyn") (install "kitty")
+install-all: install-cli install-probe (install "gatzi") (install "zennij") (install "gigazyn") (install "kitty")
 
 uninstall-all: (uninstall "gatzi") (uninstall "zennij") (uninstall "gigazyn") (uninstall "kitty")
 

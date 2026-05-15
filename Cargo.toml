@@ -1,0 +1,3 @@
+[workspace]
+members = ["zyn-probe"]
+resolver = "2"
