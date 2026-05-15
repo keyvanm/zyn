@@ -15,6 +15,17 @@ With **Zyn**, both route to the same session. Press Enter in yazi or click a pat
 > [!NOTE]
 > Zyn started as an acronym (**Z**ellij, **Y**azi, **N**eovim) for the three tools it was built to wire together. It outgrew the name. Today zyn works inside any multiplexer (or none), is built to be editor agnostic, and extends to Hyprland and sway workspaces. The wiring stayed.
 
+## What you get
+
+In the spirit of [Omarchy](https://omarchy.org), zyn ships a riced terminal-first dev environment as a fresh-install — but modular, so you take only the pieces that fit your setup.
+
+- **`gatzi`** — yazi + lazygit, wired into zyn's routing
+- **`zennij`** — zellij `zyn` (desktop) and `zynm` (mobile) layouts
+- **`gigazyn`** — nvim pack: `giga.nvim` + `zyn.nvim`
+- **`kitty`** — clicked-path and OSC 8 routing into zyn
+
+Take the whole catalog with `just fresh-install-all`, or pick one: `just fresh-install gatzi`. Each bundle's full anatomy lives [further down](#bundles).
+
 ## The loop
 
 The basic loop works on any system, with any terminal. Open two terminals in your project. In one, run `zyn --start`. Your editor boots in that pane. From the other, run `zyn src/app.py:42`. The file appears in the editor, on a new tab, at line 42. Open more terminals; every `zyn <file>` lands in the same editor.
@@ -177,9 +188,11 @@ Congrats on making the decision to craft your own dev environment. Install nvim,
 If zyn saves you a context switch today:
 
 - ⭐ **Star the repo** to help prioritize a PyPI release
-- 🐛 **[Open an issue](https://github.com/keyvanm/zyn/issues)** for Helix, Kakoune, or anything broken
+- 🐛 **[Open an issue](https://github.com/keyvanm/zyn/issues)** for anything broken
 - 💬 **Tell us how you use it**. We're still figuring out who else needs this
 
-**Today**: nvim sessions with optional scoping (multiplexer pane, WM workspace, or both), cross-workspace focus via zyn.nvim on Hyprland/sway, `path:line:col` parsing, multi-file open, race-safe sibling-pane handoff.
+**Today**: nvim backend; scoping by multiplexer pane or WM workspace; cross-workspace focus via `zyn.nvim`; `path:line:col` parsing; multi-file open. Bundles: `gatzi`, `zennij`, `gigazyn`, `kitty`.
 
-**Roadmap**: Helix and Kakoune backends (PRs welcome, see the `Editor` ABC in `editors.py`), tmux bundle (prebuilt session config + keybinds), hyprland bundle (prebuilt window rules + keybinds), publish to PyPI.
+**Next**: `tmux` bundle, `hyprland` bundle, PyPI release. With those, the bundle catalog is closed.
+
+**Open invitations** (community-shaped, not on the critical path): additional editor backends. Helix and Kakoune are the obvious candidates — see the `Editor` ABC in `editors.py`.
