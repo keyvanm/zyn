@@ -15,6 +15,26 @@ With **Zyn**, both route to the same session. Press Enter in yazi or click a pat
 > [!NOTE]
 > Zyn started as an acronym (**Z**ellij, **Y**azi, **N**eovim) for the three tools it was built to wire together. It outgrew the name. Today zyn works inside any multiplexer (or none), is built to be editor agnostic, and extends to Hyprland and sway workspaces. The wiring stayed.
 
+## Install
+
+Required: a supported editor (today: **nvim**), **uv** (we'll install it in step 1).
+Optional: a multiplexer (zellij or tmux).
+
+```sh
+# 1. Install uv (skip if you have it)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. Install zyn
+uv tool install git+https://github.com/keyvanm/zyn
+
+# 3. Set your environment (add this to your shell profile)
+export EDITOR=zyn
+
+# 4. Bootstrap a session at your workspace root
+cd ~/projects/myrepo
+zyn --start
+```
+
 ## In practice
 
 Here's what zyn looks like wired up: yazi browsing files in one pane, lazygit handling commits in another, Claude Code in a third — every clicked path lands in the same nvim. No new instances. No window-switching.
@@ -107,27 +127,9 @@ zyn defines two things.
 
 Today there's one backend: nvim. Kakoune and Helix are next. The session model and routing are editor-agnostic; only the wire format (how you tell the editor to open a file at a line) is editor-specific.
 
-## Install
+## Commands
 
-Required: a supported editor (today: **nvim**), **uv** (we'll install it in step 1).
-Optional: a multiplexer (zellij or tmux).
-
-```sh
-# 1. Install uv (skip if you have it)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 2. Install zyn
-uv tool install git+https://github.com/keyvanm/zyn
-
-# 3. Set your environment (add this to your shell profile)
-export EDITOR=zyn
-
-# 4. Bootstrap a session at your workspace root
-cd ~/projects/myrepo
-zyn --start
-```
-
-From anywhere in this repo, `zyn src/app.py:42` opens that file in your nvim session, at line 42.
+From anywhere in your repo, `zyn src/app.py:42` opens that file in your nvim session, at line 42.
 
 ```sh
 zyn src/app.py:42:5         # open at line 42, column 5
