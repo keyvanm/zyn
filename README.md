@@ -166,7 +166,7 @@ Prefer to integrate manually? Each bundle in `bundles/<name>/` is a stow package
 
 ## Coming from VS Code or Cursor?
 
-This is the stack to build toward. Install nvim, set `$EDITOR=zyn`, then pick your tiling:
+Congrats on making the decision to craft your own dev environment. Install nvim, set `$EDITOR=zyn`, then pick your tiling:
 
 - **Without a tiling WM**: install zellij and run `just fresh-install-all`. You get yazi + nvim + terminal in one `--layout zyn` window.
 - **Hyprland or sway**: skip zellij, your WM already tiles. Run `just fresh-install gatzi` (yazi/lazygit wiring) and `just fresh-install gigazyn` (nvim plugin pack). One editor per repo follows you across every workspace.
