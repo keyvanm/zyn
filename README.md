@@ -162,10 +162,16 @@ Each integration ships as a **bundle** — a stow package under `bundles/<name>/
 # install just + stow first (the bundle install mechanism)
 brew install just stow                  # macOS
 sudo pacman -S just stow                # Arch
+sudo apt install just stow              # Debian/Ubuntu
+sudo dnf install just stow              # Fedora
 
-# then install one bundle, or all of them
+# wire one bundle and install its upstream tools
 just fresh-install gatzi
-just fresh-install-all                  # all bundles + zyn CLI
+just pkg gatzi
+
+# or take everything
+just fresh-install-all                  # zyn CLI + all bundle configs
+just pkg-all                            # all upstream tools
 ```
 
 ### Anatomy of `just`
@@ -194,8 +200,8 @@ Prefer to integrate manually? Each bundle in `bundles/<name>/` is a stow package
 
 Congrats on making the decision to craft your own dev environment. Install nvim, set `$EDITOR=zyn`, then pick your tiling:
 
-- **Without a tiling WM**: install zellij and run `just fresh-install-all`. You get yazi + nvim + terminal in one `--layout zyn` window.
-- **Hyprland or sway**: skip zellij, your WM already tiles. Run `just fresh-install gatzi` (yazi/lazygit wiring) and `just fresh-install gigazyn` (nvim plugin pack). One editor per repo follows you across every workspace.
+- **Without a tiling WM**: run `just fresh-install-all` then `just pkg-all`. You get yazi + nvim + terminal in one `--layout zyn` window.
+- **Hyprland or sway**: skip zellij, your WM already tiles. Run `just fresh-install gatzi && just pkg gatzi` (yazi/lazygit wiring) and `just fresh-install gigazyn && just pkg gigazyn` (nvim plugin pack). One editor per repo follows you across every workspace.
 
 ## What's next
 
