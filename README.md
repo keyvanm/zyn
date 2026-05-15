@@ -1,6 +1,6 @@
 # Zyn
 
-> The missing session protocol for your terminal editor
+> The missing session protocol for your terminal stack
 
 Open files in one shared terminal editor per project, scoped by multiplexer pane or WM workspace.
 
