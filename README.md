@@ -64,11 +64,13 @@ By default, one repo means one editor, even across workspaces. Drop a terminal o
 
 ## The missing layer
 
-How many editor instances do you have open right now? When was the last time you closed a duplicate nvim because some tool spawned it for you?
+How many different terminal editor instances do you have open right now? How many of them did you actually mean to open?
 
-Every modern IDE has session management baked in. VS Code, Cursor, Zed, all of them know which window owns which workspace, and route file-opens accordingly. The terminal ecosystem doesn't. Each tool, Claude Code, yazi, lazygit, every grep result, every clickable path, invokes `$EDITOR` independently and spawns its own. None know about the editor already running next door.
+Every modern IDE is a container. The terminal, the coding agent, the editor — all live inside it. VS Code, Cursor, Zed: the IDE owns the wall, and routing file-opens is bookkeeping within it.
 
-zyn is the coordination layer that was missing. One `$EDITOR` every tool calls. One session per project. About 550 lines of Python, one direct dependency (`typer`). The first implementation routes to nvim.
+zyn is the inverse topology. There is no wall — your terminal, your coding agent, your editor are siblings in your WM or multiplexer. What an IDE achieves by _containment_, zyn achieves by _designation_: one sibling is the master editor, and every other tool routes into it.
+
+zyn is the coordination layer. `zyn -s` in one pane promotes the master editor; `$EDITOR=zyn` everywhere else routes into it. One session per project. About 550 lines of Python, one direct dependency (`typer`). The first implementation routes to nvim.
 
 ## What zyn replaces
 
