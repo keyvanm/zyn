@@ -6,11 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `zyn` is a CLI that routes file-open requests to a single "master" editor session per workspace. Set `$EDITOR=zyn`; calls like `zyn src/app.py:42:5` from anywhere in the workspace tree land in the same editor instance at the right line.
 
-Python 3.14+, single dependency `typer`. Tests with `pytest`. See `README.md` for user-facing usage.
+Two binaries:
+
+- **`zyn`** (Python 3.14+, dep: `typer`) — the CLI. Handles session bootstrap, discovery, locking, and nvim remote-send routing. Source under `src/zyn/`, tested with `pytest`.
+- **`zyn-probe`** (Rust, single binary) — a fast read-only check: exit 0 if a live session exists for a path, 1 otherwise. Used by the yazi plugin to choose between attach (silent) and spawn (TTY-handoff) before yazi commits to a blocking or non-blocking command. Exists because python's ~150ms cold-start was perceptible as a UI flash on every file open.
+
+See `README.md` for user-facing usage.
 
 ## Commands
 
-Use `uv` for everything Python:
+Python (uv):
 
 ```sh
 uv sync                                        # install deps + dev deps
@@ -19,14 +24,23 @@ uv run pytest tests/test_zyn.py::test_name     # single test
 uv run zyn ...                                 # invoke the CLI from the source tree
 ```
 
-Bundle installation is managed via `just` (requires `stow`):
+Rust (cargo workspace at repo root):
+
+```sh
+cargo build --release                          # builds zyn-probe into ./target/release/
+cargo install --path zyn-probe                 # install to ~/.cargo/bin/
+```
+
+Install + bundles via `just` (requires `stow`):
 
 ```sh
 just                          # list all recipes
 just install-cli              # install zyn CLI from GitHub via uv tool
 just install-cli-dev          # install from local source (editable)
+just install-probe            # install zyn-probe from GitHub via cargo
+just install-probe-dev        # install from local source
 just fresh-install gatzi      # backup → clear → install a bundle
-just fresh-install-all        # same for all bundles + CLI
+just fresh-install-all        # CLI + probe + all bundles
 just backup gatzi             # snapshot ~/.config dirs the bundle touches
 just clear gatzi              # wipe those dirs (backs up first by default)
 just clear gatzi true         # wipe without backup
@@ -36,16 +50,28 @@ just brew gatzi               # install bundle's upstream deps via brew
 
 ## Architecture
 
-Two-module package under `src/zyn/`:
+### Python CLI (`src/zyn/`)
+
+Two-module package:
 
 - `__main__.py` — Typer CLI surface. Parses flags, resolves scope, picks editor class, dispatches one of four modes: `--start` (bootstrap), `--reveal` (focus only), `--detached` (no session), or default (attach + open).
 - `editors.py` — All session machinery + editor backends. `Editor` is the abstract base; `Neovim` is the only concrete impl. `EDITORS` dict in `__main__.py` is the registry.
+
+### Rust probe (`zyn-probe/`)
+
+A separate cargo crate, member of the workspace at the repo root. Reimplements just the read path of `Editor.discover()`:
+
+- Computes `$XDG_RUNTIME_DIR/zyn/<md5(abs_path|scope_components)>.sock`.
+- `detect_multiplexer()` replicates the zellij/tmux env-var probe.
+- Walks `Path::ancestors()` looking for a live unix socket; exits 0 on first hit, 1 otherwise.
+
+**Lockstep constraint:** the socket-keying scheme is duplicated between `editors.py` (`SessionScope.key_components`, `Editor.get_socket_for`) and `zyn-probe/src/main.rs`. Any change to the python side must be mirrored in the rust side. There's currently no shared definition or parity test — add one if this drifts.
 
 ### Session identity
 
 A session is keyed by `(root, SessionScope)`. `SessionScope` carries optional `multiplexer` and `wm_workspace` discriminators detected via env vars + `tmux`/`hyprctl`/`swaymsg`. `Editor.get_socket_for()` md5-hashes the joined components into `$XDG_RUNTIME_DIR/zyn/<hash>.sock`. Empty scope collapses to root-only keying.
 
-`--scope` accepts `none`, `all`, or a comma-list of dimensions in `AVAILABLE_SCOPES`. To add a new scope dimension: add a detector in `editors.py`, extend `SessionScope`, `AVAILABLE_SCOPES`, and `build_scope`.
+`--scope` accepts `none`, `all`, or a comma-list of dimensions in `AVAILABLE_SCOPES`. To add a new scope dimension: add a detector in `editors.py`, extend `SessionScope`, `AVAILABLE_SCOPES`, and `build_scope` — and mirror the detection in `zyn-probe/src/main.rs`.
 
 ### Concurrency model
 
@@ -66,11 +92,19 @@ Two `zyn --start` invocations at the same `(root, scope)` must not both spawn ed
 
 `Target.parse()` uses `rsplit` so a path that literally contains colons is preserved unless the trailing 1–2 segments are all-digits (matches helix/sublime convention). Multi-file open puts the cursor on the *last* target only.
 
+## Plugins (`plugins/`)
+
+Top-level plugins shared across bundles. Each lives in its own `<name>.yazi/` directory matching the yazi-plugin layout, so they can be extracted to standalone repos when stable.
+
+- `zyn.yazi/` — yazi opener plugin. Intercepts `l`/`<Enter>`/`<Right>`/`o`: descends directories normally, but for files it shells out to `zyn-probe`, then emits `ya.emit("shell", { ..., block = not has_session, orphan = has_session })`. Attach is silent; spawn blocks so the new nvim takes over the pane. Requires `zyn-probe` on `$PATH` — if absent, the probe fails closed, falling through to the blocking spawn path on every open (functional, flashy).
+
+Bundles consume these plugins via relative symlinks under `bundles/<bundle>/.../plugins/<name>.yazi/ → ../../../../plugins/<name>.yazi`. Stow then links each leaf file into `~/.config/<tool>/plugins/<name>.yazi/`.
+
 ## Bundles
 
 `bundles/` contains curated config sets that wire sibling terminal tools to route through `zyn`. Each bundle is a stow package — its directory tree mirrors `~/.config/`, so `just install <bundle>` symlinks leaf files into place with `stow --no-folding`.
 
-- `gatzi/` — yazi + lazygit. Both point their edit action at `zyn`. Also includes a yazi git-status plugin and a `gi` keybind to launch lazygit from yazi.
+- `gatzi/` — yazi + lazygit. Both point their edit action at `zyn`. Wires `plugins/zyn.yazi` into the open keys (`l`/`<Enter>`/`<Right>`/`o`) for flash-free routing. Includes the upstream yazi git-status plugin and a `gi` keybind to launch lazygit.
 - `zennij/` — zellij layouts (`zellij/layouts/zyn.kdl` desktop, `zynm.kdl` mobile/stacked) that spawn `yazi` + `zyn -s` in paired panes.
 - `gigazyn/` — nvim pack manifest (`nvim/plugin/gigazyn.lua`) that loads `giga.nvim` + `zyn.nvim` via `vim.pack.add`. Auto-loaded by nvim from `plugin/`; no `require` needed.
 - `kitty/` — kitty config (`kitty/kitty.conf`, `kitty/open-actions.conf`) that routes clicked `file://` URLs and OSC 8 hyperlinks to `zyn` via `open-actions.conf` rules, and adds `kitty_mod+p>f|l` hints-kitten keymaps for keyboard-driven path picking.

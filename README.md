@@ -70,7 +70,7 @@ Every modern IDE is a container. The terminal, the coding agent, the editor — 
 
 zyn is the inverse topology. There is no wall — your terminal, your coding agent, your editor are siblings in your WM or multiplexer. What an IDE achieves by _containment_, zyn achieves by _designation_: one sibling is the master editor, and every other tool routes into it.
 
-zyn is the coordination layer. `zyn -s` in one pane promotes the master editor; `$EDITOR=zyn` everywhere else routes into it. One session per project. About 550 lines of Python, one direct dependency (`typer`). The first implementation routes to nvim.
+zyn is the coordination layer. `zyn -s` in one pane promotes the master editor; `$EDITOR=zyn` everywhere else routes into it. One session per project. About 550 lines of Python, one direct dependency (`typer`), plus a tiny rust companion (`zyn-probe`) that gives the yazi opener a sub-10ms session check for flash-free routing. The first implementation routes to nvim.
 
 ## What zyn replaces
 
