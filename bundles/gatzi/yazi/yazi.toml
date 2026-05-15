@@ -1,8 +1,3 @@
-[[opener.edit]]
-run = 'zyn "$@"'
-block = false
-desc = "Edit with Zyn"
-
 [[plugin.prepend_fetchers]]
 id    = "git"
 url   = "*"
