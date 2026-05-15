@@ -31,7 +31,7 @@ Each `bundles/<name>/` is a `stow --no-folding` package: its tree mirrors `~/.co
 - `gigazyn/` — nvim pack manifest loading `giga.nvim` + `zyn.nvim` via `vim.pack`.
 - `kitty/` — clicked-path and OSC 8 routing into `zyn`, plus hints-kitten keymaps.
 
-Each bundle's `deps.txt` lists upstream brew packages (`just brew <name>`). To add a bundle: create `bundles/<new>/` mirroring its `~/.config/` footprint, drop a `deps.txt`, and add it to the `*-all` aggregates in the `Justfile`.
+Each bundle's `deps.txt` is the canonical (manager-agnostic) list of upstream packages. `just pkg <name>` detects the package manager (pacman > apt > dnf > brew) and installs via it. Bundles can override per-manager with optional `deps.pacman`, `deps.apt`, `deps.dnf`, `deps.brew` files when names diverge. To add a bundle: create `bundles/<new>/` mirroring its `~/.config/` footprint, drop a `deps.txt`, and add it to the `*-all` aggregates in the `Justfile`.
 
 ## Workspace context
 

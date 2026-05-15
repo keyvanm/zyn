@@ -61,21 +61,44 @@ clear BUNDLE no-backup="false":
         fi
     done
 
-# Install upstream tools listed in the bundle's deps.txt via brew.
-brew BUNDLE:
+# Install upstream tools listed in the bundle's deps.<manager> (or deps.txt fallback)
+# via the first detected package manager (pacman > apt > dnf > brew).
+pkg BUNDLE:
     #!/usr/bin/env bash
     set -euo pipefail
-    deps="bundles/{{BUNDLE}}/deps.txt"
-    if [ ! -f "$deps" ]; then
-        echo "{{BUNDLE}}: no deps.txt, skipping"
+    if command -v pacman &>/dev/null; then
+        manager=pacman
+        install_cmd="sudo pacman -S --needed --noconfirm"
+    elif command -v apt-get &>/dev/null; then
+        manager=apt
+        install_cmd="sudo apt-get install -y"
+    elif command -v dnf &>/dev/null; then
+        manager=dnf
+        install_cmd="sudo dnf install -y"
+    elif command -v brew &>/dev/null; then
+        manager=brew
+        install_cmd="brew install"
+    else
+        echo "{{BUNDLE}}: no supported package manager found (pacman, apt, dnf, brew)" >&2
+        exit 1
+    fi
+    override="bundles/{{BUNDLE}}/deps.$manager"
+    canonical="bundles/{{BUNDLE}}/deps.txt"
+    if [ -f "$override" ]; then
+        deps="$override"
+    elif [ -f "$canonical" ]; then
+        deps="$canonical"
+    else
+        echo "{{BUNDLE}}: no deps file, skipping"
         exit 0
     fi
     pkgs=$(grep -vE '^(#|$)' "$deps" | tr '\n' ' ')
     if [ -z "$pkgs" ]; then
-        echo "{{BUNDLE}}: deps.txt is empty, skipping"
+        echo "{{BUNDLE}}: $(basename "$deps") is empty, skipping"
         exit 0
     fi
-    brew install $pkgs
+    echo "{{BUNDLE}}: installing via $manager from $(basename "$deps"): $pkgs"
+    $install_cmd $pkgs
 
 # Install zyn from GitHub via uv tool.
 install-cli:
@@ -119,4 +142,4 @@ backup-all: (backup "gatzi") (backup "zennij") (backup "gigazyn") (backup "kitty
 
 clear-all: (clear "gatzi") (clear "zennij") (clear "gigazyn") (clear "kitty")
 
-brew-all: (brew "gatzi") (brew "zennij") (brew "gigazyn") (brew "kitty")
+pkg-all: (pkg "gatzi") (pkg "zennij") (pkg "gigazyn") (pkg "kitty")

@@ -175,13 +175,11 @@ just fresh-install-all                  # all bundles + zyn CLI
 | `just install <bundle>`       | Symlink the bundle into `~/.config/` via stow. Fails on conflict.          |
 | `just fresh-install <bundle>` | Backup → clear → install. Use this if you already have configs in the way. |
 | `just uninstall <bundle>`     | Remove zyn's symlinks. Your own files stay.                                |
-| `just brew <bundle>`          | Install the bundle's upstream tools from `deps.txt` (macOS).               |
+| `just pkg <bundle>`           | Install upstream tools from `deps.txt`. Auto-detects pacman, apt, dnf, brew. |
 
-Append `-all` to any verb to batch across the full catalog: `just fresh-install-all`, `just uninstall-all`, `just brew-all`, etc.
+Append `-all` to any verb to batch across the full catalog: `just fresh-install-all`, `just uninstall-all`, `just pkg-all`, etc.
 
 Backups land in `~/.local/share/zyn/backups/` as timestamped tarballs. Restore by extracting.
-
-Each bundle has a `deps.txt` listing the system packages it depends on. Install them with `just brew <bundle>` (macOS) or your package manager of choice.
 
 Prefer to integrate manually? Each bundle in `bundles/<name>/` is a stow package. Cherry-pick files into your existing config, or run `stow` yourself.
 
