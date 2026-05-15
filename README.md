@@ -15,18 +15,20 @@ With **Zyn**, both route to the same session. Press Enter in yazi or click a pat
 > [!NOTE]
 > Zyn started as an acronym (**Z**ellij, **Y**azi, **N**eovim) for the three tools it was built to wire together. It outgrew the name. Today zyn works inside any multiplexer (or none), is built to be editor agnostic, and extends to Hyprland and sway workspaces. The wiring stayed.
 
-## What you get
+## In practice
 
-Bundles that wire your terminal stack together. Pick the ones that fit your setup, skip the rest. Works on Linux and macOS — any Unix in theory.
+Here's what zyn looks like wired up: yazi browsing files in one pane, lazygit handling commits in another, Claude Code in a third — every clicked path lands in the same nvim. No new instances. No window-switching.
 
-Same shape as [omakub](https://omakub.org), scoped to the terminal stack.
+zyn works without any of the below — set `$EDITOR=zyn` and you're done. But most setups want yazi to open into the session, a zellij layout that pre-panes the workspace, an nvim pack that knows about zyn. We ship those as **integrations**, installable independently:
 
-- **`gatzi`** — yazi + lazygit, wired into zyn's routing
-- **`zennij`** — zellij `zyn` (desktop) and `zynm` (mobile) layouts
-- **`gigazyn`** — nvim pack: `giga.nvim` (Nvim distro) + `zyn.nvim` (zyn companion plugin)
-- **`kitty`** — clicked-path and OSC 8 routing into zyn
+- **`gatzi`** — yazi's open keys route through zyn; lazygit launches from yazi
+- **`zennij`** — zellij layouts (`zyn` desktop, `zynm` mobile/stacked) that pre-pane yazi + nvim + terminal
+- **`gigazyn`** — nvim pack: `giga.nvim` (nvim distro) + `zyn.nvim` (zyn's editor-side companion)
+- **`kitty`** — clicked-path and OSC 8 hyperlink routing into zyn
 
-Take the whole catalog with `just fresh-install-all`, or pick one: `just fresh-install gatzi`. Each bundle's full anatomy lives [further down](#bundles).
+Take everything with `just fresh-install-all`, or pick one: `just fresh-install gatzi`. Each integration's full anatomy lives [further down](#bundles).
+
+Works on Linux and macOS — any Unix in theory.
 
 ## The loop
 
