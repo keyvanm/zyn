@@ -17,11 +17,13 @@ With **Zyn**, both route to the same session. Press Enter in yazi or click a pat
 
 ## What you get
 
-In the spirit of [Omarchy](https://omarchy.org), zyn ships a riced terminal-first dev environment as a fresh-install — but modular, so you take only the pieces that fit your setup.
+Bundles that wire your terminal stack together. Pick the ones that fit your setup, skip the rest. Works on Linux and macOS — any Unix in theory.
+
+Same shape as [omakub](https://omakub.org), scoped to the terminal stack.
 
 - **`gatzi`** — yazi + lazygit, wired into zyn's routing
 - **`zennij`** — zellij `zyn` (desktop) and `zynm` (mobile) layouts
-- **`gigazyn`** — nvim pack: `giga.nvim` + `zyn.nvim`
+- **`gigazyn`** — nvim pack: `giga.nvim` (Nvim distro) + `zyn.nvim` (zyn companion plugin)
 - **`kitty`** — clicked-path and OSC 8 routing into zyn
 
 Take the whole catalog with `just fresh-install-all`, or pick one: `just fresh-install gatzi`. Each bundle's full anatomy lives [further down](#bundles).
