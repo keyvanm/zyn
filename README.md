@@ -80,7 +80,7 @@ zyn is the coordination layer. `zyn -s` in one pane promotes the master editor; 
 | nvim `--server` / `--remote-send`                 | Send commands to a known nvim socket                        | zyn discovers the socket for you, scopes by multiplexer/WM, and handles concurrent `--start` races                 |
 | Hand-rolled `tmux send-keys` / zellij glue        | Wire one specific tool into one specific pane with a script | zyn is multiplexer-agnostic (works without one), covers every `$EDITOR` caller at once, and survives crashed nvims |
 | [yazelix](https://github.com/luccahuguet/yazelix) | All-in-one Nix flake bundling yazi + zellij + helix/nvim    | One Python tool, no Nix; bring your own stack; works on Hyprland, sway, tmux, or none of the above                 |
-| VS Code / Cursor terminal integration             | IDE owns the terminal; clickable paths route to the IDE     | Inverted: the terminal is primary, your editor (nvim) is the recipient, and zyn is the routing layer between them  |
+| VS Code / Cursor terminal integration             | IDE is primary; routing happens inside the wrapper          | Inverted: the terminal is primary; the terminal editor is the session master                                       |
 
 ## The protocol
 
