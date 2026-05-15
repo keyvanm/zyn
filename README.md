@@ -1,8 +1,10 @@
 # Zyn
 
-**The missing session protocol for your terminal editor**
+> The missing session protocol for your terminal editor
 
 Open files in one shared terminal editor per project, scoped by multiplexer pane or WM workspace.
+
+## Why Zyn?
 
 Yazi on the left, Claude Code on the right, nvim already open. You press Enter on a file in yazi and a new nvim takes over the pane. You click `src/auth.rs:42` in Claude Code's output and another one spawns somewhere else. The nvim you already had open is sitting there awkwardly.
 
@@ -154,10 +156,10 @@ Each bundle has a `deps.txt` listing the system packages it depends on. Install 
 
 Prefer to integrate manually? Each bundle in `bundles/<name>/` is a stow package. Cherry-pick files into your existing config, or run `stow` yourself.
 
-| Bundle      | What it does                                                                                                                                                                                                                                                                                                                                                                  | Upstream deps       |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| **gatzi**   | yazi + lazygit wiring; yazi git-status indicator; `gi` keybind to launch lazygit from yazi. Post-install runs `ya pkg install` to fetch the yazi plugins it depends on.                                                                                                                                                                                                       | yazi, lazygit, git  |
-| **zennij**  | Two zellij layouts: `zyn` (desktop), `zynm` (mobile/stacked)                                                                                                                                                                                                                                                                                                                  | zellij              |
+| Bundle      | What it does                                                                                                                                                                                                                                                                                                                                                                 | Upstream deps       |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| **gatzi**   | yazi + lazygit wiring; yazi git-status indicator; `gi` keybind to launch lazygit from yazi. Post-install runs `ya pkg install` to fetch the yazi plugins it depends on.                                                                                                                                                                                                      | yazi, lazygit, git  |
+| **zennij**  | Two zellij layouts: `zyn` (desktop), `zynm` (mobile/stacked)                                                                                                                                                                                                                                                                                                                 | zellij              |
 | **gigazyn** | nvim pack manifest loading [`giga.nvim`](https://github.com/keyvanm/giga.nvim) and [`zyn.nvim`](https://github.com/keyvanm/zyn.nvim). Replaces a standalone zyn.nvim install. giga.nvim's language pack expects formatters and LSPs (ruff, ty, marksman, stylua, etc.). See giga.nvim's [Requirements](https://github.com/keyvanm/giga.nvim#requirements) for the full list. | neovim, tree-sitter |
 
 ## Coming from VS Code or Cursor?
