@@ -2,7 +2,7 @@
 
 > The missing session protocol for your terminal stack
 
-Open files in one shared terminal editor per project, scoped by multiplexer pane or WM workspace.
+Open files in one shared terminal editor per project — anywhere in the worktree, from any tool.
 
 ## Why Zyn?
 
