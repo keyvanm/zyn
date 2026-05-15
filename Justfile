@@ -109,9 +109,9 @@ fresh-install BUNDLE:
     just clear {{BUNDLE}} true
     just install {{BUNDLE}}
 
-fresh-install-all: install-cli install-probe (fresh-install "gatzi") (fresh-install "zennij") (fresh-install "gigazyn") (fresh-install "kitty")
-
 install-all: install-cli install-probe (install "gatzi") (install "zennij") (install "gigazyn") (install "kitty")
+
+fresh-install-all: install-cli install-probe (fresh-install "gatzi") (fresh-install "zennij") (fresh-install "gigazyn") (fresh-install "kitty")
 
 uninstall-all: (uninstall "gatzi") (uninstall "zennij") (uninstall "gigazyn") (uninstall "kitty")
 
