@@ -96,14 +96,14 @@ fresh-install BUNDLE:
     just clear {{BUNDLE}} true
     just install {{BUNDLE}}
 
-fresh-install-all: install-cli (fresh-install "gatzi") (fresh-install "zennij") (fresh-install "gigazyn")
+fresh-install-all: install-cli (fresh-install "gatzi") (fresh-install "zennij") (fresh-install "gigazyn") (fresh-install "kitty")
 
-install-all: install-cli (install "gatzi") (install "zennij") (install "gigazyn")
+install-all: install-cli (install "gatzi") (install "zennij") (install "gigazyn") (install "kitty")
 
-uninstall-all: (uninstall "gatzi") (uninstall "zennij") (uninstall "gigazyn")
+uninstall-all: (uninstall "gatzi") (uninstall "zennij") (uninstall "gigazyn") (uninstall "kitty")
 
-backup-all: (backup "gatzi") (backup "zennij") (backup "gigazyn")
+backup-all: (backup "gatzi") (backup "zennij") (backup "gigazyn") (backup "kitty")
 
-clear-all: (clear "gatzi") (clear "zennij") (clear "gigazyn")
+clear-all: (clear "gatzi") (clear "zennij") (clear "gigazyn") (clear "kitty")
 
-brew-all: (brew "gatzi") (brew "zennij") (brew "gigazyn")
+brew-all: (brew "gatzi") (brew "zennij") (brew "gigazyn") (brew "kitty")

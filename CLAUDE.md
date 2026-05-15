@@ -73,6 +73,7 @@ Two `zyn --start` invocations at the same `(root, scope)` must not both spawn ed
 - `gatzi/` — yazi + lazygit. Both point their edit action at `zyn`. Also includes a yazi git-status plugin and a `gi` keybind to launch lazygit from yazi.
 - `zennij/` — zellij layouts (`zellij/layouts/zyn.kdl` desktop, `zynm.kdl` mobile/stacked) that spawn `yazi` + `zyn -s` in paired panes.
 - `gigazyn/` — nvim pack manifest (`nvim/plugin/gigazyn.lua`) that loads `giga.nvim` + `zyn.nvim` via `vim.pack.add`. Auto-loaded by nvim from `plugin/`; no `require` needed.
+- `kitty/` — kitty config (`kitty/kitty.conf`, `kitty/open-actions.conf`) that routes clicked `file://` URLs and OSC 8 hyperlinks to `zyn` via `open-actions.conf` rules, and adds `kitty_mod+p>f|l` hints-kitten keymaps for keyboard-driven path picking.
 
 Each bundle has a `deps.txt` (one brew package per line) consumed by `just brew <bundle>`. Backups land in `$XDG_DATA_HOME/zyn/backups/` (default `~/.local/share/zyn/backups/`).
 
