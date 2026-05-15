@@ -2,3 +2,23 @@
 on   = [ "g", "i" ]
 run  = "plugin lazygit"
 desc = "run lazygit"
+
+[[mgr.prepend_keymap]]
+on   = "l"
+run  = "plugin zyn"
+desc = "Open via zyn (flash-free)"
+
+[[mgr.prepend_keymap]]
+on   = "<Right>"
+run  = "plugin zyn"
+desc = "Open via zyn (flash-free)"
+
+[[mgr.prepend_keymap]]
+on   = "<Enter>"
+run  = "plugin zyn"
+desc = "Open via zyn (flash-free)"
+
+[[mgr.prepend_keymap]]
+on   = "o"
+run  = "plugin zyn"
+desc = "Open via zyn (flash-free)"
