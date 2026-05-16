@@ -12,6 +12,7 @@ dependencies = ["typer"]
 
 [project.scripts]
 zyn = "zyn.__main__:app"
+zyn-cli = "zyn.cli:app"
 
 [dependency-groups]
 dev = ["pytest"]

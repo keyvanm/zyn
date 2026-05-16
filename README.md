@@ -24,14 +24,15 @@ Optional: a multiplexer (zellij or tmux).
 # 1. Install uv (skip if you have it)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 2. Install zyn
+# 2. Install zyn (provides `zyn` for routing and `zyn-cli` for setup, probe)
 uv tool install git+https://github.com/keyvanm/zyn
 
-# 3. Set EDITOR=zyn — run it now, and add the same line to your shell's startup file
-# bash or zsh → ~/.bashrc or ~/.zshrc
-export EDITOR=zyn
-# fish → ~/.config/fish/config.fish
-set -gx EDITOR zyn
+# 3. Wire zyn as your editor (detects bash, zsh, fish; idempotent)
+zyn-cli setup-shell
+
+# Or manually, in your shell's startup file:
+#   bash/zsh (~/.bashrc, ~/.zshrc):    export EDITOR=zyn
+#   fish (~/.config/fish/config.fish): set -gx EDITOR zyn
 
 # 4. Bootstrap a session at your workspace root
 cd ~/projects/myrepo
