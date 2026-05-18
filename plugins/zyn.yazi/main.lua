@@ -20,6 +20,15 @@ return {
             return
         end
 
+        -- Inside nvim's :term (yazi.nvim's floating popup), yazi.nvim handles
+        -- the pick via --chooser-file. Fall back to yazi's default open so the
+        -- chooser path runs; otherwise we'd remote-send :edit back into the
+        -- same nvim and land the file in the floating window.
+        if os.getenv("NVIM") then
+            ya.emit("open", {})
+            return
+        end
+
         local paths = #t.selected > 0 and t.selected or { t.hovered_path }
         if not paths[1] then return end
 
