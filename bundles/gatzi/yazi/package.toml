@@ -10,7 +10,7 @@ hash = "6ea5f37c7f219671ec504cb8311f889d"
 
 [[plugin.deps]]
 use = "keyvanm/zyn:zyn"
-rev = "9854ee2"
+rev = "eadac77"
 hash = "99aa06d3014798d86001c324468d497f"
 
 [flavor]
