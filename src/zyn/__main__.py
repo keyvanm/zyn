@@ -1,8 +1,7 @@
+import argparse
 import enum
+import os
 from pathlib import Path
-from typing import Annotated
-
-import typer
 
 from zyn.editors import (
     DEFAULT_SCOPE,
@@ -13,8 +12,6 @@ from zyn.editors import (
     parse_scope,
 )
 
-app = typer.Typer()
-
 
 class EditorName(str, enum.Enum):
     nvim = "nvim"
@@ -24,82 +21,88 @@ EDITORS: dict[EditorName, type[Editor]] = {
     EditorName.nvim: Neovim,
 }
 
+_VALID_EDITORS = {e.value for e in EditorName}
 
-@app.command()
-def main(
-    targets: Annotated[
-        list[Target] | None,
-        typer.Argument(
-            parser=Target.parse,
-            help="One or more files to open, each optionally with :line or :line:col",
-        ),
-    ] = None,
-    editor: Annotated[
-        EditorName, typer.Option("-e", "--editor", envvar="ZYN_EDITOR")
-    ] = EditorName.nvim,
-    start: Annotated[
-        bool,
-        typer.Option(
-            "-s", "--start", help="Bootstrap a new session at the resolved root"
-        ),
-    ] = False,
-    detached: Annotated[
-        bool,
-        typer.Option(
-            "-d", "--detached", help="Skip discovery, run editor without a session"
-        ),
-    ] = False,
-    workspace: Annotated[
-        Path | None,
-        typer.Option("-w", "--workspace", help="Use ROOT as session root, no walk-up"),
-    ] = None,
-    scope: Annotated[
-        str,
-        typer.Option(
-            "--scope",
-            envvar="ZYN_SCOPE",
-            help="Scope dimensions: comma-list of mux,wm — or 'all'/'none'",
-        ),
-    ] = DEFAULT_SCOPE,
-    no_focus: Annotated[
-        bool,
-        typer.Option(
-            "--no-focus",
-            envvar="ZYN_NO_FOCUS",
-            help="Don't trigger editor-side focus after routing",
-        ),
-    ] = False,
-    reveal: Annotated[
-        bool,
-        typer.Option(
-            "-r",
-            "--reveal",
-            help="Focus the editor pane without opening a file",
-        ),
-    ] = False,
-) -> None:
-    mutex = [n for n, on in [("--start", start), ("--detached", detached), ("--reveal", reveal)] if on]
+
+def app(argv=None) -> None:
+    parser = argparse.ArgumentParser(
+        prog="zyn",
+        description="Route file-open requests to one master editor session per workspace.",
+    )
+    parser.add_argument(
+        "targets",
+        nargs="*",
+        type=Target.parse,
+        metavar="TARGET",
+        help="One or more files to open, each optionally with :line or :line:col",
+    )
+    parser.add_argument(
+        "-e", "--editor",
+        default=os.environ.get("ZYN_EDITOR", EditorName.nvim.value),
+        metavar="{" + ",".join(e.value for e in EditorName) + "}",
+        help="Editor to use (env: ZYN_EDITOR)",
+    )
+    parser.add_argument(
+        "-s", "--start",
+        action="store_true",
+        help="Bootstrap a new session at the resolved root",
+    )
+    parser.add_argument(
+        "-d", "--detached",
+        action="store_true",
+        help="Skip discovery, run editor without a session",
+    )
+    parser.add_argument(
+        "-w", "--workspace",
+        type=Path,
+        metavar="ROOT",
+        help="Use ROOT as session root, no walk-up",
+    )
+    parser.add_argument(
+        "--scope",
+        default=os.environ.get("ZYN_SCOPE", DEFAULT_SCOPE),
+        help="Scope dimensions: comma-list of mux,wm — or 'all'/'none' (env: ZYN_SCOPE)",
+    )
+    parser.add_argument(
+        "--no-focus",
+        action="store_true",
+        default=bool(os.environ.get("ZYN_NO_FOCUS")),
+        help="Don't trigger editor-side focus after routing (env: ZYN_NO_FOCUS)",
+    )
+    parser.add_argument(
+        "-r", "--reveal",
+        action="store_true",
+        help="Focus the editor pane without opening a file",
+    )
+
+    args = parser.parse_args(argv)
+
+    if args.editor not in _VALID_EDITORS:
+        parser.error(f"invalid value for --editor: {args.editor!r} (valid: {', '.join(sorted(_VALID_EDITORS))})")
+
+    mutex = [n for n, on in [("--start", args.start), ("--detached", args.detached), ("--reveal", args.reveal)] if on]
     if len(mutex) > 1:
-        raise typer.BadParameter(f"{', '.join(mutex)} are mutually exclusive")
-    if reveal and targets:
-        raise typer.BadParameter("--reveal does not take file arguments")
+        parser.error(f"{', '.join(mutex)} are mutually exclusive")
+    if args.reveal and args.targets:
+        parser.error("--reveal does not take file arguments")
 
     try:
-        session_scope = build_scope(parse_scope(scope))
+        session_scope = build_scope(parse_scope(args.scope))
     except ValueError as e:
-        raise typer.BadParameter(str(e), param_hint="--scope") from e
+        parser.error(f"--scope: {e}")
 
-    editor_cls = EDITORS[editor]
+    editor_cls = EDITORS[EditorName(args.editor)]
+    targets = args.targets or None
 
-    if reveal:
-        ref_path = workspace or Path.cwd()
+    if args.reveal:
+        ref_path = args.workspace or Path.cwd()
         instance = (
-            editor_cls.attach(workspace, session_scope)
-            if workspace
+            editor_cls.attach(args.workspace, session_scope)
+            if args.workspace
             else editor_cls.discover(ref_path, session_scope)
         )
         if not instance:
-            raise typer.BadParameter(f"no live session for {ref_path}")
+            parser.error(f"no live session for {ref_path}")
         instance.focus()
         return
 
@@ -108,17 +111,17 @@ def main(
 
     primary = targets[0].path
 
-    if detached:
+    if args.detached:
         editor_cls().detached(targets)
         return
 
-    if start:
-        root = workspace or (primary if primary.is_dir() else primary.parent)
+    if args.start:
+        root = args.workspace or (primary if primary.is_dir() else primary.parent)
         if Editor.has_live_session(root, session_scope):
-            raise typer.BadParameter(f"session already exists at {root}")
+            parser.error(f"session already exists at {root}")
         lock = Editor.acquire_start_lock(root, session_scope)
         if lock is None:
-            raise typer.BadParameter(
+            parser.error(
                 f"session creation in progress at {root}; "
                 f"drop --start to wait and attach"
             )
@@ -130,12 +133,12 @@ def main(
         return
 
     instance = (
-        editor_cls.attach(workspace, session_scope)
-        if workspace
+        editor_cls.attach(args.workspace, session_scope)
+        if args.workspace
         else editor_cls.discover(primary, session_scope, wait_pending=True)
     )
     if instance:
-        instance.open(targets, focus=not no_focus)
+        instance.open(targets, focus=not args.no_focus)
     else:
         editor_cls().detached(targets)
 

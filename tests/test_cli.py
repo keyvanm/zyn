@@ -1,8 +1,8 @@
 import subprocess
 
 import pytest
-from typer.testing import CliRunner
 
+from cli_runner import CliRunner
 from zyn.cli import app
 
 

@@ -6,8 +6,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from typer.testing import CliRunner
 
+from cli_runner import CliRunner
 from zyn.__main__ import app
 from zyn.editors import (
     STALE_LOCK_AGE_SECONDS,
