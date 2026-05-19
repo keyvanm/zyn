@@ -1,6 +1,6 @@
 config_dir := env_var("HOME") / ".config"
 backups_dir := env_var_or_default("XDG_DATA_HOME", env_var("HOME") / ".local" / "share") / "zyn" / "backups"
-stow_flags := "--no-folding --ignore=deps\\.txt -t " + config_dir + " -d bundles"
+stow_flags := "--no-folding --ignore=deps\\.txt --ignore=post-install\\.sh -t " + config_dir + " -d bundles"
 
 default:
     @just --list
